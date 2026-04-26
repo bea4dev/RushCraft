@@ -1,0 +1,6 @@
+name: RushCraft
+version: '${version}'
+
+main: com.github.bea4dev.rushCraft.RushCraft
+api-version: '1.21.11'
+load: POSTWORLD
