@@ -1,0 +1,8 @@
+[match]
+start = "試合開始！"
+
+[match.waiting]
+countdown = "あと{0}秒で試合が始まります"
+
+[match.finished]
+winner = "{0}の勝利！"
