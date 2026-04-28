@@ -2,7 +2,8 @@
 start = "試合開始！"
 
 [match.waiting]
-countdown = "あと{0}秒で試合が始まります"
+need = "ゲームを開始するにはあと{0}人必要です"
+countdown = "ゲーム開始まで{0}秒"
 
 [match.finished]
 winner = "{0}の勝利！"
