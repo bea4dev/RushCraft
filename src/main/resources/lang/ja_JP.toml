@@ -7,3 +7,4 @@ countdown = "ゲーム開始まで{0}秒"
 
 [match.finished]
 winner = "{0}の勝利！"
+countdown = "次のゲームまで{0}秒"

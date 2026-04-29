@@ -9,6 +9,7 @@ import net.kyori.adventure.text.format.NamedTextColor
 import org.bukkit.Bukkit
 
 const val MATCH_WAITING_COUNT = 10
+const val MATCH_ROTATION_COUNT = 10
 
 object MatchManager : Tickable {
     var state: MatchState = MatchState.Waiting(MATCH_WAITING_COUNT, 0)
@@ -79,10 +80,11 @@ object MatchManager : Tickable {
                 if (waiting.seconds == 0) {
                     Bukkit.getOnlinePlayers().forEach {
                         it.sendMessage(Component.text("######################").color(NamedTextColor.GREEN))
-                        it.sendMessage(Component.translatable("match.start").color(NamedTextColor.GOLD))
+                        it.sendMessage(Component.translatable("rushcraft.match.start").color(NamedTextColor.GOLD))
                         it.sendMessage(Component.text("######################").color(NamedTextColor.GREEN))
                     }
                     state = MatchState.Running
+                    match.schedule()
                     return
                 }
 
@@ -90,11 +92,43 @@ object MatchManager : Tickable {
             }
 
             is MatchState.Running -> {
-
+                if (!match.isAlive()) {
+                    state = MatchState.Finished(MATCH_ROTATION_COUNT)
+                }
             }
 
             is MatchState.Finished -> {
+                val finished = state as MatchState.Finished
 
+                val showSeconds = when (finished.seconds) {
+                    10 -> true
+                    5 -> true
+                    4 -> true
+                    3 -> true
+                    2 -> true
+                    1 -> true
+                    else -> false
+                }
+
+                if (showSeconds) {
+                    Bukkit.getOnlinePlayers().forEach {
+                        it.sendMessage(
+                            Component.translatable(
+                                "rushcraft.match.finished.countdown", Component.text(finished.seconds).color(
+                                    NamedTextColor.RED
+                                )
+                            ).color(NamedTextColor.GREEN)
+                        )
+                    }
+                }
+
+                if (finished.seconds == 0) {
+                    state = MatchState.Waiting(MATCH_WAITING_COUNT, 0)
+                    match = rotation()
+                    return
+                }
+
+                finished.seconds--
             }
         }
     }

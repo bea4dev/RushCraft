@@ -4,12 +4,8 @@ import com.github.bea4dev.rushCraft.scheduler.Tickable
 import org.bukkit.entity.Player
 import java.util.stream.Collectors
 
-class Match<out G: MatchGameMode>(private val mode: G, val teams: List<MatchTeam>): Tickable {
-    private val objective = mode.createObjective()
-
-    fun isEnd(): Boolean {
-        return !this.objective.getWinners().isEmpty()
-    }
+class Match<G : MatchGameMode<G>>(private val mode: G, val teams: List<MatchTeam>) : Tickable {
+    private val objective: MatchObjective<G> = mode.createObjective()
 
     fun getMembers(): List<Player> {
         return teams.stream()
@@ -22,6 +18,6 @@ class Match<out G: MatchGameMode>(private val mode: G, val teams: List<MatchTeam
     }
 
     override fun isAlive(): Boolean {
-        return true
+        return this.objective.getWinners(this).isEmpty()
     }
 }

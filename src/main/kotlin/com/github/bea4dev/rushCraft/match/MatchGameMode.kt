@@ -1,5 +1,5 @@
 package com.github.bea4dev.rushCraft.match
 
-interface MatchGameMode {
-    fun createObjective(): MatchObjective
+interface MatchGameMode<G : MatchGameMode<G>> {
+    fun createObjective(): MatchObjective<G>
 }
