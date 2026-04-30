@@ -1,3 +1,4 @@
+# !tyml lang.tyml
 [match]
 start = "試合開始！"
 
@@ -7,4 +8,5 @@ countdown = "ゲーム開始まで{0}秒"
 
 [match.finished]
 winner = "{0}の勝利！"
+draw = "引き分け！"
 countdown = "次のゲームまで{0}秒"

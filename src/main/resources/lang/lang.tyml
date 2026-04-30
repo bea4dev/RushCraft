@@ -1,0 +1,12 @@
+match: {
+    start: string,
+    waiting: {
+        need: string,
+        countdown: string,
+    },
+    finished: {
+        winner: string,
+        draw: string,
+        countdown: string,
+    }
+}
