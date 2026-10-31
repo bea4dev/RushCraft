@@ -7,7 +7,6 @@ import com.github.bea4dev.rushCraft.match.MatchGameModeType
 import com.github.bea4dev.rushCraft.match.MatchGameModeTypes
 import com.github.bea4dev.rushCraft.match.mode.CTWType
 import com.github.bea4dev.rushCraft.menu.KitMenu
-import com.github.bea4dev.rushCraft.menu.TeamMenu
 import com.github.bea4dev.rushCraft.setup.SetupManager
 import com.github.bea4dev.rushCraft.setup.SetupMenu
 import io.papermc.paper.command.brigadier.BasicCommand
@@ -55,22 +54,12 @@ object Commands {
         return true
     }
 
+    /** チームは選べず、人数の少ないチームに自動で参加する */
     private object JoinCommand : BasicCommand {
         override fun execute(commandSourceStack: CommandSourceStack, args: Array<String>) {
             val player = commandSourceStack.player() ?: return
             if (!requireMatch(player)) return
-            val teamId = args.firstOrNull()
-            if (teamId == null) {
-                TeamMenu.open(player)
-            } else {
-                MatchManager.join(player, teamId)
-            }
-        }
-
-        override fun suggest(commandSourceStack: CommandSourceStack, args: Array<String>): Collection<String> {
-            if (args.size > 1) return emptyList()
-            val teams = MatchManager.match?.teams?.map { it.id } ?: return emptyList()
-            return filter(teams, args.firstOrNull() ?: "")
+            MatchManager.join(player)
         }
     }
 

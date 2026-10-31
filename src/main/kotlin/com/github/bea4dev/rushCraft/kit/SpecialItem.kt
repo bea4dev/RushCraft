@@ -1,5 +1,6 @@
 package com.github.bea4dev.rushCraft.kit
 
+import com.github.bea4dev.rushCraft.manager.MatchManager
 import com.github.bea4dev.rushCraft.match.TeamColor
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.TextDecoration
@@ -10,6 +11,7 @@ import org.bukkit.attribute.AttributeModifier
 import org.bukkit.enchantments.Enchantment
 import org.bukkit.inventory.EquipmentSlotGroup
 import org.bukkit.inventory.ItemStack
+import org.bukkit.inventory.meta.Damageable
 import org.bukkit.inventory.meta.ShieldMeta
 
 /**
@@ -31,8 +33,20 @@ enum class SpecialItem(val id: String, val icon: Material) {
     /** 当たった敵を一撃で倒す投げナイフ (1 回のスポーンにつき 1 回) */
     THROWING_KNIFE("throwing_knife", Material.FLINT),
 
-    /** 着火して構え、投げると近くの敵に持たせる TNT (1 回のスポーンにつき 1 回) */
-    TNT("tnt", Material.TNT);
+    /** 着火して構え、投げると近くの敵に持たせる TNT (爆発してから時間で復活) */
+    TNT("tnt", Material.TNT),
+
+    /** 置いた場所に高さ 3 ブロックのガラスの壁を作る (使ってから時間で復活) */
+    INSTANT_WALL("instant_wall", Material.GLASS),
+
+    /** しゃがんでチャージすると高く飛び上がれるメイス */
+    MACE("mace", Material.MACE),
+
+    /** 突進付きの鉄の槍。3 回使うと壊れ、時間で復活する */
+    SPEAR("spear", Material.IRON_SPEAR),
+
+    /** 敵が踏むと爆発する感圧板 (見た目はマップごとに変えられる) */
+    TRAP("trap", Material.STONE_PRESSURE_PLATE);
 
     val nameKey: String
         get() = "rushcraft.kit.special.$id"
@@ -86,6 +100,25 @@ enum class SpecialItem(val id: String, val icon: Material) {
             THROWING_KNIFE -> listOf(3 to named(ItemStack(Material.FLINT)))
 
             TNT -> listOf(4 to named(ItemStack(Material.TNT)))
+
+            INSTANT_WALL -> listOf(5 to named(ItemStack(color?.let(InstantWall::glassOf) ?: Material.GLASS)))
+
+            MACE -> listOf(6 to named(ItemStack(Material.MACE)))
+
+            SPEAR -> listOf(
+                7 to named(ItemStack(Material.IRON_SPEAR)).also { stack ->
+                    stack.editMeta(Damageable::class.java) { meta ->
+                        meta.addEnchant(Enchantment.LUNGE, 2, true)
+                        // 耐久は使った回数として自前で減らす
+                        meta.setMaxDamage(SpearManager.MAX_USES)
+                    }
+                },
+            )
+
+            TRAP -> {
+                val plate = MatchManager.match?.map?.kit?.trapPlateMaterial() ?: Material.STONE_PRESSURE_PLATE
+                listOf(8 to named(ItemStack(plate, TrapManager.MAX_TRAPS)))
+            }
         }.onEach { (_, stack) -> KitManager.markSpecial(stack, this) }
     }
 

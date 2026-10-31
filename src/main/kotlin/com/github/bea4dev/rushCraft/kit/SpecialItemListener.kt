@@ -1,5 +1,6 @@
 package com.github.bea4dev.rushCraft.kit
 
+import com.destroystokyo.paper.event.block.BlockDestroyEvent
 import com.github.bea4dev.rushCraft.RushCraft
 import org.bukkit.Bukkit
 import org.bukkit.entity.Player
@@ -8,8 +9,11 @@ import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
 import org.bukkit.event.block.Action
+import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.event.block.BlockPlaceEvent
 import org.bukkit.event.entity.EntityDamageByEntityEvent
+import org.bukkit.event.entity.EntityDamageEvent
+import org.bukkit.event.entity.EntityInteractEvent
 import org.bukkit.event.entity.PlayerDeathEvent
 import org.bukkit.event.entity.ProjectileHitEvent
 import org.bukkit.event.entity.ProjectileLaunchEvent
@@ -17,6 +21,7 @@ import org.bukkit.event.player.PlayerAnimationEvent
 import org.bukkit.event.player.PlayerAnimationType
 import org.bukkit.event.player.PlayerInteractEntityEvent
 import org.bukkit.event.player.PlayerInteractEvent
+import org.bukkit.event.player.PlayerItemDamageEvent
 import org.bukkit.event.player.PlayerPickupArrowEvent
 import org.bukkit.event.player.PlayerQuitEvent
 import org.bukkit.inventory.EquipmentSlot
@@ -37,9 +42,11 @@ class SpecialItemListener : Listener {
             TntManager.throwHeld(player)
             return
         }
-        if (event.action != Action.RIGHT_CLICK_AIR && event.action != Action.RIGHT_CLICK_BLOCK) return
+        if (event.action == Action.PHYSICAL) return
+        val rightClick = event.action == Action.RIGHT_CLICK_AIR || event.action == Action.RIGHT_CLICK_BLOCK
         when (KitManager.specialOf(event.item)) {
             SpecialItem.THROWING_KNIFE -> {
+                if (!rightClick) return
                 event.isCancelled = true
                 if (!Combatants.canUse(player)) return
                 // 投げたら復活するまで使えない
@@ -47,8 +54,20 @@ class SpecialItemListener : Listener {
                 ThrowingKnife.throwKnife(player)
             }
 
+            SpecialItem.INSTANT_WALL -> {
+                // 普通のブロックとしては置かせない
+                event.isCancelled = true
+                val clicked = event.clickedBlock
+                if (event.action != Action.RIGHT_CLICK_BLOCK || clicked == null || !Combatants.canUse(player)) return
+                if (!InstantWall.build(player, clicked.getRelative(event.blockFace))) return
+                val stack = player.inventory.itemInMainHand
+                stack.amount--
+                player.inventory.setItemInMainHand(stack)
+                ItemRecharge.schedule(player, SpecialItem.INSTANT_WALL, InstantWall.RECHARGE_TICKS)
+            }
+
             SpecialItem.TNT -> {
-                // ブロックとして置かせない
+                // 左右どちらのクリックでも着火する。ブロックとして置かせない
                 event.isCancelled = true
                 if (!Combatants.canUse(player)) return
                 TntManager.ignite(player)
@@ -59,8 +78,76 @@ class SpecialItemListener : Listener {
     }
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
-    fun onPlaceTnt(event: BlockPlaceEvent) {
-        if (KitManager.specialOf(event.itemInHand) == SpecialItem.TNT) event.isCancelled = true
+    fun onPlaceSpecial(event: BlockPlaceEvent) {
+        val special = KitManager.specialOf(event.itemInHand)
+        if (special == SpecialItem.TNT || special == SpecialItem.INSTANT_WALL) event.isCancelled = true
+    }
+
+    // ------------------------------------------------------------------
+    // トラップ
+    // ------------------------------------------------------------------
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    fun onPlaceTrap(event: BlockPlaceEvent) {
+        if (KitManager.specialOf(event.itemInHand) != SpecialItem.TRAP) return
+        TrapManager.place(event.player, event.blockPlaced)
+    }
+
+    /** トラップの感圧板は誰が踏んでも反応させず、敵が踏んだときだけ爆発させる */
+    @EventHandler(priority = EventPriority.LOW)
+    fun onStepTrap(event: PlayerInteractEvent) {
+        if (event.action != Action.PHYSICAL) return
+        val block = event.clickedBlock ?: return
+        if (TrapManager.onStep(event.player, block)) event.isCancelled = true
+    }
+
+    @EventHandler(priority = EventPriority.LOW)
+    fun onEntityStepTrap(event: EntityInteractEvent) {
+        if (TrapManager.isTrap(event.block)) event.isCancelled = true
+    }
+
+    /** 壊されたトラップは何もドロップせずに解除する */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    fun onBreakTrap(event: BlockBreakEvent) {
+        if (!TrapManager.isTrap(event.block)) return
+        event.isDropItems = false
+        TrapManager.remove(event.block)
+    }
+
+    /** 下のブロックが壊れたなどで外れたとき */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    fun onDestroyTrap(event: BlockDestroyEvent) {
+        if (!TrapManager.isTrap(event.block)) return
+        event.setWillDrop(false)
+        TrapManager.remove(event.block)
+    }
+
+    // ------------------------------------------------------------------
+    // メイス・槍
+    // ------------------------------------------------------------------
+
+    /** ダメージを受けたらメイスのチャージを解除する */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    fun onDamaged(event: EntityDamageEvent) {
+        val player = event.entity as? Player ?: return
+        MaceManager.onDamaged(player)
+    }
+
+    /**
+     * 槍の耐久はバニラでは減らさず、使った回数として数える。
+     * 盾の耐久は ShieldManager が内部で持つので、アイテムの耐久は減らさない。
+     */
+    @EventHandler(ignoreCancelled = true)
+    fun onItemDamage(event: PlayerItemDamageEvent) {
+        when (KitManager.specialOf(event.item)) {
+            SpecialItem.SPEAR -> {
+                event.isCancelled = true
+                if (Combatants.canUse(event.player)) SpearManager.onUse(event.player)
+            }
+
+            SpecialItem.SHIELD -> event.isCancelled = true
+            else -> {}
+        }
     }
 
     // ------------------------------------------------------------------
@@ -109,13 +196,18 @@ class SpecialItemListener : Listener {
         TntManager.throwHeld(event.player)
     }
 
-    /** TNT を持っている間の攻撃は、攻撃せずに投げる */
+    /** TNT を持っている間・TNT アイテムでの攻撃は、攻撃せずに投げる・着火する */
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     fun onAttackWithTnt(event: EntityDamageByEntityEvent) {
         val attacker = event.damager as? Player ?: return
-        if (!TntManager.isHolding(attacker)) return
-        event.isCancelled = true
-        TntManager.throwHeld(attacker)
+        if (TntManager.isHolding(attacker)) {
+            event.isCancelled = true
+            TntManager.throwHeld(attacker)
+        } else if (KitManager.specialOf(attacker.inventory.itemInMainHand) == SpecialItem.TNT) {
+            // TNT アイテムで殴ったときも着火する
+            event.isCancelled = true
+            if (Combatants.canUse(attacker)) TntManager.ignite(attacker)
+        }
     }
 
     // ------------------------------------------------------------------
@@ -126,6 +218,8 @@ class SpecialItemListener : Listener {
     fun onDeath(event: PlayerDeathEvent) {
         TntManager.onLeave(event.player)
         Swapper.removeThrown(event.player)
+        MaceManager.clear(event.player)
+        SpearManager.clear(event.player)
         // リスポーンで配り直される
         ItemRecharge.clear(event.player)
     }
@@ -134,6 +228,8 @@ class SpecialItemListener : Listener {
     fun onQuit(event: PlayerQuitEvent) {
         TntManager.onLeave(event.player)
         Swapper.removeThrown(event.player)
+        MaceManager.clear(event.player)
+        SpearManager.clear(event.player)
         ItemRecharge.clear(event.player)
     }
 }

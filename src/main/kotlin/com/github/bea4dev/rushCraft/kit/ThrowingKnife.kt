@@ -109,6 +109,15 @@ object ThrowingKnife : Tickable {
         val velocity = knife.velocity
         val owner = Bukkit.getPlayer(knife.owner)
 
+        // パリィ中の敵に向かっていれば、矢と同じように弾き返す
+        val parrier = ShieldManager.findParrying(knife.position, velocity) {
+            it.uniqueId != knife.owner && Combatants.isTarget(it) && (owner == null || Combatants.isEnemy(owner, it))
+        }
+        if (parrier != null) {
+            reflect(knife, parrier)
+            return
+        }
+
         val hit = world.rayTrace(
             knife.position, velocity, velocity.length(), FluidCollisionMode.NEVER, true, HIT_RADIUS,
         ) { entity ->
@@ -148,12 +157,9 @@ object ThrowingKnife : Tickable {
         val world = victim.world
         knife.position = position.toLocation(world)
 
-        // パリィ中なら投げた方向へ弾き返す (弾き返した人のナイフになる)
+        // パリィ中なら投げた方向へ弾き返す
         if (ShieldManager.isParrying(victim)) {
-            knife.velocity.multiply(-1)
-            knife.owner = victim.uniqueId
-            knife.ticks = 0
-            ShieldManager.parried(victim)
+            reflect(knife, victim)
             return
         }
 
@@ -175,6 +181,14 @@ object ThrowingKnife : Tickable {
         world.spawnParticle(Particle.DAMAGE_INDICATOR, victim.location.add(0.0, 1.0, 0.0), 8, 0.3, 0.4, 0.3, 0.2)
         remove(knife)
         CombatTracker.kill(victim, owner, "rushcraft.match.death.knife")
+    }
+
+    /** 投げた方向へ弾き返す (弾き返した人のナイフになる) */
+    private fun reflect(knife: Knife, player: Player) {
+        knife.velocity.multiply(-1)
+        knife.owner = player.uniqueId
+        knife.ticks = 0
+        ShieldManager.parried(player)
     }
 
     private fun remove(knife: Knife) {

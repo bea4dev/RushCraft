@@ -10,6 +10,7 @@ match: {
         knife: string,
         tnt: string,
         tnt-self: string,
+        trap: string,
     },
     waiting: {
         need: string,
@@ -66,9 +67,6 @@ command: {
         already: string,
         closed: string,
         full: string,
-        running: string,
-        unbalanced: string,
-        unknown: string,
     },
     spectate: {
         done: string,
@@ -89,6 +87,7 @@ map: {
         duplicate-team: string,
         duplicate-color: string,
         single-team: string,
+        invalid-trap-plate: string,
         ctw: {
             no-wools: string,
             unknown-team: string,
@@ -245,7 +244,8 @@ setup: {
 team-menu: {
     title: string,
     description: string,
-    auto: string,
+    join: string,
+    current: string,
     spectate: string,
     close: string,
 },
@@ -264,6 +264,14 @@ kit: {
         throwing_knife-description: string,
         tnt: string,
         tnt-description: string,
+        instant_wall: string,
+        instant_wall-description: string,
+        mace: string,
+        mace-description: string,
+        spear: string,
+        spear-description: string,
+        trap: string,
+        trap-description: string,
     },
     ui: {
         team-selector: string,
@@ -290,6 +298,7 @@ kit: {
     },
     shield: {
         broken: string,
+        gauge: string,
         parry: string,
         stunned: string,
     },
@@ -301,5 +310,12 @@ kit: {
         ignited: string,
         caught: string,
         returned: string,
+    },
+    mace: {
+        ready: string,
+        interrupted: string,
+    },
+    spear: {
+        broken: string,
     },
 }

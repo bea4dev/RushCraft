@@ -5,6 +5,7 @@ import com.github.bea4dev.rushCraft.manager.MatchManager
 import com.github.bea4dev.rushCraft.menu.KitMenu
 import com.github.bea4dev.rushCraft.menu.TeamMenu
 import org.bukkit.Bukkit
+import org.bukkit.damage.DamageType
 import org.bukkit.entity.AbstractArrow
 import org.bukkit.entity.Player
 import org.bukkit.entity.Projectile
@@ -108,13 +109,20 @@ class KitListener : Listener {
     // パリィ
     // ------------------------------------------------------------------
 
+    /** 近接攻撃 (メイスの叩きつけ・槍を含む) か */
+    private fun isMelee(event: EntityDamageByEntityEvent): Boolean {
+        if (event.cause == EntityDamageEvent.DamageCause.ENTITY_ATTACK ||
+            event.cause == EntityDamageEvent.DamageCause.ENTITY_SWEEP_ATTACK
+        ) return true
+        val type = event.damageSource.damageType
+        return type == DamageType.MACE_SMASH || type == DamageType.SPEAR
+    }
+
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     fun onMeleeParry(event: EntityDamageByEntityEvent) {
         val victim = event.entity as? Player ?: return
         val attacker = event.damager as? Player ?: return
-        if (event.cause != EntityDamageEvent.DamageCause.ENTITY_ATTACK &&
-            event.cause != EntityDamageEvent.DamageCause.ENTITY_SWEEP_ATTACK
-        ) return
+        if (!isMelee(event)) return
         if (!ShieldManager.isParrying(victim)) return
         if (!MatchManager.isRunning(victim.world)) return
         // 味方からの攻撃は対象外
@@ -123,6 +131,16 @@ class KitListener : Listener {
 
         event.isCancelled = true
         ShieldManager.parryMelee(victim, attacker)
+    }
+
+    /** ガード中に受けた近接攻撃を覚えておく (直後にガードを解除するとパリィになる) */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    fun onGuardedMelee(event: EntityDamageByEntityEvent) {
+        val victim = event.entity as? Player ?: return
+        val attacker = event.damager as? Player ?: return
+        if (!isMelee(event)) return
+        if (!MatchManager.isRunning(victim.world) || !Combatants.isEnemy(victim, attacker)) return
+        ShieldManager.onGuardedMelee(victim, attacker)
     }
 
     /** ガードしたまま攻撃を受けると盾の耐久が大きく減る */

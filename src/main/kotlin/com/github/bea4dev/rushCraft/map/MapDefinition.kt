@@ -18,6 +18,8 @@ import com.github.bea4dev.rushCraft.util.strings
 import com.github.bea4dev.rushCraft.util.tables
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
+import org.bukkit.Material
+import org.bukkit.Tag
 import org.tomlj.Toml
 import java.io.File
 
@@ -94,6 +96,12 @@ class MapDefinition(
         if (teams.size == 1) {
             problems += MapProblem.warning("rushcraft.map.problem.single-team")
         }
+        kit.trapPlate?.let { plate ->
+            val material = Material.matchMaterial(plate)
+            if (material == null || !Tag.PRESSURE_PLATES.isTagged(material)) {
+                problems += MapProblem.error("rushcraft.map.problem.invalid-trap-plate", Component.text(plate))
+            }
+        }
         problems += settings.validate(this)
         return problems
     }
@@ -120,6 +128,8 @@ class MapDefinition(
         writer.value("team-colored-armor", kit.teamColoredArmor)
         writer.comment("キットのアイテムを死亡時にドロップするか")
         writer.value("drop-on-death", kit.dropOnDeath)
+        writer.comment("特殊アイテムのトラップに使う感圧板 (例: \"minecraft:polished_blackstone_pressure_plate\")。省略時は石の感圧板")
+        kit.trapPlate?.let { writer.value("trap-plate", it) }
         writer.value("items", kit.items.map { it.toToml() })
 
         for (team in teams) {
@@ -196,6 +206,7 @@ class MapDefinition(
                     items = kit?.tables("items")?.map(KitItem::parse)?.toMutableList() ?: mutableListOf(),
                     teamColoredArmor = kit?.bool("team-colored-armor", true) ?: true,
                     dropOnDeath = kit?.bool("drop-on-death", false) ?: false,
+                    trapPlate = kit?.optString("trap-plate"),
                 ),
                 noBuildRegions = result.tables("no-build").map(Region::parse).toMutableList(),
                 settings = type.parseSettings(result.optTable(type.id)),

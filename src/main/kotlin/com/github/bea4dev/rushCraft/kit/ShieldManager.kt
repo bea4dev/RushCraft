@@ -8,6 +8,7 @@ import net.kyori.adventure.sound.Sound
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import org.bukkit.Bukkit
+import org.bukkit.Color
 import org.bukkit.FluidCollisionMode
 import org.bukkit.Location
 import org.bukkit.Particle
@@ -17,7 +18,6 @@ import org.bukkit.entity.Player
 import org.bukkit.entity.Trident
 import org.bukkit.inventory.EquipmentSlot
 import org.bukkit.inventory.ItemStack
-import org.bukkit.inventory.meta.Damageable
 import org.bukkit.util.Vector
 import java.util.UUID
 
@@ -26,14 +26,17 @@ import java.util.UUID
  *
  * - ガード中は耐久が徐々に減り、約 5 秒で壊れる
  * - ガードしたまま攻撃を受けると耐久が最大値の 1/2 減る
+ * - 耐久はアイテムの耐久値ではなく内部で持ち、ガード中にアクションバーのゲージで表示する
+ *   (ガード中にアイテムを書き換えるとガードが途切れるため)。最後に使ってから 10 秒で全回復する
  * - 壊れてから 10 秒で復活する
  * - ガードを解除してから 2 tick の間はパリィ状態になる
- *   - 一度パリィ受付をすると、3 秒経つかパリィに成功するまで次のパリィ受付はできない
+ *   - 一度パリィ受付をすると、0.8 秒経つかパリィに成功するまで次のパリィ受付はできない
  *   - 近接攻撃してきた敵をふっとばしてスタンさせる
+ *     (ガード中に近接攻撃を受けてから 2 tick 以内にガードを解除した場合もパリィになる。通信の遅延対策)
  *   - 近くの矢・当たった矢を飛んできた方向へ弾き返す
  *   - 成功すると盾の耐久が全回復する
  * - スタン中はマーカーのアーマースタンドに座らされてふっとび、アイテムを一時的に没収され攻撃できない。
- *   着地してから 0.5 秒で解除される。
+ *   着地してから 1.5 秒で解除される。
  */
 object ShieldManager : Tickable {
     /** ガードし続けて壊れるまでの tick 数 */
@@ -43,13 +46,18 @@ object ShieldManager : Tickable {
     private const val PARRY_TICKS = 2
 
     /** パリィ受付をしてから次に受付できるまでの tick 数 (パリィに成功すると即座に解除) */
-    private const val PARRY_COOLDOWN_TICKS = 60
+    private const val PARRY_COOLDOWN_TICKS = 16
 
     /** ガード中に攻撃を受けたときに減る耐久の割合 */
     private const val BLOCKED_HIT_DAMAGE_RATIO = 0.5
 
     /** 壊れてから復活するまでの tick 数 */
     private const val RESTORE_TICKS = 200
+
+    /** 最後に使ってから耐久が全回復するまでの tick 数 */
+    private const val RECOVER_TICKS = 200
+
+    private const val BAR_LENGTH = 10
 
     /** 矢を弾き返す範囲 */
     private const val ARROW_RADIUS = 3.5
@@ -59,7 +67,7 @@ object ShieldManager : Tickable {
     private const val KNOCKBACK_VERTICAL = 0.32
 
     /** 着地してからスタンが続く tick 数 */
-    private const val LANDED_STUN_TICKS = 10
+    private const val LANDED_STUN_TICKS = 30
 
     /** 着地しなかった場合の最大スタン tick 数 */
     private const val MAX_STUN_TICKS = 100
@@ -67,11 +75,21 @@ object ShieldManager : Tickable {
     /** 座ったプレイヤーの足元は、乗り物の位置より 0.6 低くなる */
     private const val SEAT_OFFSET = 0.6
 
+    /** ガード中に受けた近接攻撃から、この tick 数以内にガードを解除してもパリィになる */
+    private const val PARRY_GRACE_TICKS = 2
+
     private class Guard {
         var raised = false
-        var drain = 0.0
+
+        /** 耐久 (1.0 が満タン) */
+        var durability = 1.0
+        var lastUsedAt = 0L
         var parryUntil = -1L
         var parryReadyAt = 0L
+
+        /** ガード中に最後に近接攻撃してきた敵と、その時の tick */
+        var lastAttacker: UUID? = null
+        var lastAttackedAt = 0
     }
 
     private class Stun(
@@ -105,17 +123,21 @@ object ShieldManager : Tickable {
             val raised = guardingHand(player) != null
 
             if (raised) {
-                drain(player, guard)
+                damageShield(player, guard, 1.0 / GUARD_TICKS)
             } else if (guard.raised) {
-                guard.drain = 0.0
                 // ガード解除の瞬間からパリィ受付 (連打できないようにクールタイムを置く)
                 if (shieldHand(player) != null && tick >= guard.parryReadyAt) {
                     guard.parryUntil = tick + PARRY_TICKS
                     guard.parryReadyAt = tick + PARRY_COOLDOWN_TICKS
                     parryEffect(player)
+                    parryLateMelee(player, guard)
                 }
+                guard.lastAttacker = null
             }
             guard.raised = raised
+            if (!raised && guard.durability < 1.0 && tick - guard.lastUsedAt >= RECOVER_TICKS) {
+                guard.durability = 1.0
+            }
 
             if (isParrying(player)) {
                 reflectNearbyArrows(player)
@@ -123,6 +145,38 @@ object ShieldManager : Tickable {
         }
 
         tickStuns()
+    }
+
+    /**
+     * location 付近でパリィ中で、velocity で飛んでくるものが向かってきているプレイヤー
+     * (投げナイフや TNT を矢と同じように弾き返すため)。
+     */
+    fun findParrying(location: Location, velocity: Vector, filter: (Player) -> Boolean): Player? {
+        if (velocity.lengthSquared() < 0.01) return null
+        return location.world.getNearbyEntitiesByType(Player::class.java, location, ARROW_RADIUS).firstOrNull { player ->
+            val toPlayer = player.location.add(0.0, 1.0, 0.0).toVector().subtract(location.toVector())
+            isParrying(player) && filter(player) && velocity.dot(toPlayer) > 0
+        }
+    }
+
+    /**
+     * ガード中に近接攻撃を受けた (KitListener から呼ばれる)。
+     * 直後にガードを解除すればパリィになるよう覚えておく。
+     */
+    fun onGuardedMelee(victim: Player, attacker: Player) {
+        if (guardingHand(victim) == null) return
+        val guard = guards[victim.uniqueId] ?: return
+        guard.lastAttacker = attacker.uniqueId
+        guard.lastAttackedAt = Bukkit.getCurrentTick()
+    }
+
+    /** ガード中に受けた近接攻撃の直後にガードを解除したら、その攻撃をパリィしたことにする */
+    private fun parryLateMelee(player: Player, guard: Guard) {
+        val attacker = guard.lastAttacker?.let(Bukkit::getPlayer) ?: return
+        // ガード解除は次の tick の処理で気付くので、その 1 tick 分を足す
+        if (Bukkit.getCurrentTick() - guard.lastAttackedAt > PARRY_GRACE_TICKS + 1) return
+        if (!Combatants.isTarget(attacker) || attacker.world != player.world) return
+        parryMelee(player, attacker)
     }
 
     fun isParrying(player: Player): Boolean {
@@ -147,56 +201,58 @@ object ShieldManager : Tickable {
         }
     }
 
-    private fun drain(player: Player, guard: Guard) {
-        val hand = guardingHand(player) ?: return
-        val max = player.inventory.getItem(hand).type.maxDurability.toInt()
-        guard.drain += max.toDouble() / GUARD_TICKS
-        val amount = guard.drain.toInt()
-        if (amount <= 0) return
-        guard.drain -= amount
-        damageShield(player, hand, amount)
-    }
-
     /**
      * ガードしたまま攻撃を受けた (KitListener から呼ばれる)。
      */
     fun onBlockedHit(player: Player) {
-        val hand = guardingHand(player) ?: return
-        val max = player.inventory.getItem(hand).type.maxDurability.toInt()
-        damageShield(player, hand, Math.ceil(max * BLOCKED_HIT_DAMAGE_RATIO).toInt())
+        if (guardingHand(player) == null) return
+        val guard = guards[player.uniqueId] ?: return
+        damageShield(player, guard, BLOCKED_HIT_DAMAGE_RATIO)
     }
 
-    private fun damageShield(player: Player, hand: EquipmentSlot, amount: Int) {
-        val stack = player.inventory.getItem(hand)
-        val max = stack.type.maxDurability.toInt()
-        var broken = false
-        stack.editMeta(Damageable::class.java) { meta ->
-            meta.damage += amount
-            broken = meta.damage >= max
+    private fun damageShield(player: Player, guard: Guard, amount: Double) {
+        guard.durability -= amount
+        guard.lastUsedAt = tick
+        if (guard.durability > 1.0E-6) {
+            showGauge(player, guard.durability)
+            return
         }
-        if (broken) {
-            player.inventory.setItem(hand, null)
-            player.clearActiveItem()
-            // 壊れたことによるガード解除ではパリィ受付をしない
-            guards[player.uniqueId]?.raised = false
-            player.world.playSound(
-                Sound.sound(org.bukkit.Sound.ITEM_SHIELD_BREAK, Sound.Source.PLAYER, 1f, 1f),
-                player.x, player.y, player.z,
-            )
-            player.sendActionBar(
-                Component.translatable("rushcraft.kit.shield.broken", NamedTextColor.RED, Component.text(RESTORE_TICKS / 20))
-            )
-            ItemRecharge.schedule(player, SpecialItem.SHIELD, RESTORE_TICKS)
-        } else {
-            player.inventory.setItem(hand, stack)
+
+        val hand = guardingHand(player) ?: shieldHand(player) ?: return
+        player.inventory.setItem(hand, null)
+        player.clearActiveItem()
+        // 壊れたことによるガード解除ではパリィ受付をしない
+        guard.raised = false
+        guard.durability = 1.0
+        player.world.playSound(
+            Sound.sound(org.bukkit.Sound.ITEM_SHIELD_BREAK, Sound.Source.PLAYER, 1f, 1f),
+            player.x, player.y, player.z,
+        )
+        player.sendActionBar(
+            Component.translatable("rushcraft.kit.shield.broken", NamedTextColor.RED, Component.text(RESTORE_TICKS / 20))
+        )
+        ItemRecharge.schedule(player, SpecialItem.SHIELD, RESTORE_TICKS)
+    }
+
+    private fun showGauge(player: Player, durability: Double) {
+        val filled = Math.ceil(BAR_LENGTH * durability).toInt().coerceIn(0, BAR_LENGTH)
+        val color = when {
+            durability > 0.5 -> NamedTextColor.GREEN
+            durability > 0.25 -> NamedTextColor.YELLOW
+            else -> NamedTextColor.RED
         }
+        player.sendActionBar(
+            Component.text()
+                .append(Component.translatable("rushcraft.kit.shield.gauge", NamedTextColor.GRAY))
+                .append(Component.text(" "))
+                .append(Component.text("■".repeat(filled), color))
+                .append(Component.text("■".repeat(BAR_LENGTH - filled), NamedTextColor.DARK_GRAY))
+                .build()
+        )
     }
 
     private fun repair(player: Player) {
-        val hand = shieldHand(player) ?: return
-        val stack = player.inventory.getItem(hand)
-        stack.editMeta(Damageable::class.java) { it.damage = 0 }
-        player.inventory.setItem(hand, stack)
+        guards[player.uniqueId]?.durability = 1.0
     }
 
     private fun parryEffect(player: Player) {
@@ -215,7 +271,6 @@ object ShieldManager : Tickable {
     fun parried(player: Player) {
         repair(player)
         guards[player.uniqueId]?.let {
-            it.drain = 0.0
             // 成功したらクールタイムを解除する
             it.parryReadyAt = 0L
         }
@@ -224,6 +279,9 @@ object ShieldManager : Tickable {
             player.x, player.y, player.z,
         )
         player.world.spawnParticle(Particle.CRIT, player.location.add(0.0, 1.0, 0.0), 20, 0.4, 0.4, 0.4, 0.3)
+        // 盾の前で光らせる
+        val front = player.eyeLocation.add(player.location.direction.multiply(0.8)).subtract(0.0, 0.3, 0.0)
+        player.world.spawnParticle(Particle.FLASH, front, 1, 0.0, 0.0, 0.0, 0.0, Color.WHITE)
         player.sendActionBar(Component.translatable("rushcraft.kit.shield.parry", NamedTextColor.GOLD))
     }
 
@@ -262,13 +320,13 @@ object ShieldManager : Tickable {
     }
 
     private fun reflect(arrow: AbstractArrow, player: Player) {
-        if (arrow is Trident) {
-            // スワッパーは持ち主に戻るよう、持ち主は変えずに叩き落とす
-            arrow.velocity = arrow.velocity.multiply(-0.2)
-            return
-        }
         arrow.velocity = arrow.velocity.multiply(-1)
-        arrow.shooter = player
+        if (arrow is Trident && Swapper.isSwapper(arrow)) {
+            // 弾き返したスワッパーはパリィした人のものとして飛び、落ちたら元の持ち主に戻る
+            Swapper.onReflect(arrow, player)
+        } else {
+            arrow.shooter = player
+        }
     }
 
     // ------------------------------------------------------------------

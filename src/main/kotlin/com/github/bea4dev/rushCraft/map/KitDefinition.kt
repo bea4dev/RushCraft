@@ -6,6 +6,8 @@ import com.github.bea4dev.rushCraft.util.int
 import com.github.bea4dev.rushCraft.util.requireInt
 import com.github.bea4dev.rushCraft.util.requireString
 import org.bukkit.Bukkit
+import org.bukkit.Material
+import org.bukkit.Tag
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
 import org.bukkit.inventory.meta.LeatherArmorMeta
@@ -63,7 +65,15 @@ class KitDefinition(
     var teamColoredArmor: Boolean,
     /** キットのアイテムを死亡時にドロップするか */
     var dropOnDeath: Boolean = false,
+    /** 特殊アイテムのトラップに使う感圧板 (マップに馴染む見た目にできる)。null なら既定の石の感圧板 */
+    var trapPlate: String? = null,
 ) {
+    /** トラップに使う感圧板。設定が無いか感圧板でなければ既定の石の感圧板 */
+    fun trapPlateMaterial(): Material {
+        val material = trapPlate?.let(Material::matchMaterial)
+        return material?.takeIf { Tag.PRESSURE_PLATES.isTagged(it) } ?: Material.STONE_PRESSURE_PLATE
+    }
+
     /**
      * スロットとアイテムの組を作る。
      */

@@ -48,7 +48,6 @@ class KitConfig(
 class PluginConfig(
     val setupMode: Boolean,
     val minPlayers: Int,
-    val keepParticipants: Boolean,
     val waitingSeconds: Int,
     val finishedSeconds: Int,
     val rotationCount: Int,
@@ -80,7 +79,6 @@ class PluginConfig(
             return PluginConfig(
                 setupMode = result.bool("setup-mode", false),
                 minPlayers = match.int("min-players", 2).coerceAtLeast(1),
-                keepParticipants = match.bool("keep-participants", true),
                 waitingSeconds = match.int("waiting-seconds", 30).coerceAtLeast(1),
                 finishedSeconds = match.int("finished-seconds", 10).coerceAtLeast(1),
                 rotationCount = rotation.int("count", 5).coerceAtLeast(1),

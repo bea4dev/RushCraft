@@ -5,10 +5,14 @@ import com.github.bea4dev.rushCraft.config.LobbyMode
 import com.github.bea4dev.rushCraft.config.PluginConfig
 import com.github.bea4dev.rushCraft.config.RestartMethod
 import com.github.bea4dev.rushCraft.kit.KitManager
+import com.github.bea4dev.rushCraft.kit.InstantWall
 import com.github.bea4dev.rushCraft.kit.ItemRecharge
+import com.github.bea4dev.rushCraft.kit.MaceManager
+import com.github.bea4dev.rushCraft.kit.SpearManager
 import com.github.bea4dev.rushCraft.kit.ShieldManager
 import com.github.bea4dev.rushCraft.kit.ThrowingKnife
 import com.github.bea4dev.rushCraft.kit.TntManager
+import com.github.bea4dev.rushCraft.kit.TrapManager
 import com.github.bea4dev.rushCraft.map.MapDefinition
 import com.github.bea4dev.rushCraft.map.MapWorlds
 import com.github.bea4dev.rushCraft.match.CombatTracker
@@ -134,19 +138,12 @@ object MatchManager : Tickable {
         bukkit = createBukkitMatchManager(newMatch)
         state = MatchState.Waiting(config.waitingSeconds, -1)
 
-        // 前の試合の参加者は (設定によって) そのまま参加させ、それ以外はチーム選択画面を出す
-        val previousParticipants = previous?.getMembers()?.map { it.uniqueId }?.toSet() ?: emptySet()
-        for (player in Bukkit.getOnlinePlayers().shuffled()) {
+        // 試合ごとに全員がチーム選択画面から参加し直す
+        for (player in Bukkit.getOnlinePlayers()) {
             bukkit?.showTo(player)
-            if (config.keepParticipants && player.uniqueId in previousParticipants) {
-                assign(player)
-            } else {
-                setTeam(player, null)
-            }
+            setTeam(player, null)
             prepareLobby(player, teleport = true)
-            if (newMatch.getTeam(player) == null) {
-                openTeamMenuLater(player)
-            }
+            openTeamMenuLater(player)
         }
         updateScoreboard()
 
@@ -271,6 +268,10 @@ object MatchManager : Tickable {
         ShieldManager.reset(restore = false)
         ThrowingKnife.reset()
         TntManager.reset()
+        InstantWall.reset()
+        MaceManager.reset()
+        SpearManager.reset()
+        TrapManager.reset()
         ItemRecharge.reset()
         CombatTracker.reset()
         for (player in Bukkit.getOnlinePlayers()) {
@@ -363,17 +364,6 @@ object MatchManager : Tickable {
         bukkit?.clearEntityColor(player)
     }
 
-    /**
-     * プレイヤーを人数の少ないチームに入れる。満員の場合は null。
-     */
-    private fun assign(player: Player): MatchTeam? {
-        val match = match ?: return null
-        match.getTeam(player)?.let { return it }
-        val team = match.teams.filter { !it.isFull }.minByOrNull { it.size }
-        setTeam(player, team)
-        return team
-    }
-
     private fun setTeam(player: Player, team: MatchTeam?) {
         val match = match ?: return
         match.getTeam(player)?.leave(player)
@@ -426,7 +416,10 @@ object MatchManager : Tickable {
     /**
      * /join コマンド。teamId が null なら人数の少ないチーム。
      */
-    fun join(player: Player, teamId: String?) {
+    /**
+     * 人数の少ないチームに自動で参加する (チームは選べない)。
+     */
+    fun join(player: Player) {
         val match = match ?: return
         val state = state
         if (state !is MatchState.Waiting && state !is MatchState.Running) {
@@ -435,38 +428,14 @@ object MatchManager : Tickable {
         }
 
         val current = match.getTeam(player)
-        val target = if (teamId == null) {
-            match.teams.filter { !it.isFull && it != current }.minByOrNull { it.size }
-        } else {
-            match.teams.find { it.id.equals(teamId, ignoreCase = true) }
-                ?: run {
-                    player.sendMessage(
-                        Component.translatable("rushcraft.command.join.unknown", NamedTextColor.RED, Component.text(teamId))
-                    )
-                    return
-                }
+        if (current != null) {
+            player.sendMessage(Component.translatable("rushcraft.command.join.already", NamedTextColor.RED, current.displayName()))
+            return
         }
-
+        // 同じ人数のチームが複数あればランダムに選ぶ
+        val target = match.teams.filter { !it.isFull }.shuffled().minByOrNull { it.size }
         if (target == null) {
             player.sendMessage(Component.translatable("rushcraft.command.join.full", NamedTextColor.RED))
-            return
-        }
-        if (target == current) {
-            player.sendMessage(Component.translatable("rushcraft.command.join.already", NamedTextColor.RED, target.displayName()))
-            return
-        }
-        if (state is MatchState.Running && current != null) {
-            player.sendMessage(Component.translatable("rushcraft.command.join.running", NamedTextColor.RED))
-            return
-        }
-        if (target.isFull) {
-            player.sendMessage(Component.translatable("rushcraft.command.join.full", NamedTextColor.RED))
-            return
-        }
-        // チームの人数差が 2 以上にならないようにする
-        val smallest = match.teams.filter { it != target }.minOfOrNull { if (it == current) it.size - 1 else it.size } ?: 0
-        if (target.size + 1 - smallest > 1) {
-            player.sendMessage(Component.translatable("rushcraft.command.join.unbalanced", NamedTextColor.RED))
             return
         }
 

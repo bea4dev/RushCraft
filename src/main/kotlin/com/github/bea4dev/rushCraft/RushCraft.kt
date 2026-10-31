@@ -5,12 +5,16 @@ import com.github.bea4dev.rushCraft.config.PluginConfig
 import com.github.bea4dev.rushCraft.i18n.Translations
 import com.github.bea4dev.rushCraft.kit.KitListener
 import com.github.bea4dev.rushCraft.kit.KitManager
+import com.github.bea4dev.rushCraft.kit.InstantWall
 import com.github.bea4dev.rushCraft.kit.ItemRecharge
+import com.github.bea4dev.rushCraft.kit.MaceManager
+import com.github.bea4dev.rushCraft.kit.SpearManager
 import com.github.bea4dev.rushCraft.kit.ShieldManager
 import com.github.bea4dev.rushCraft.kit.Swapper
 import com.github.bea4dev.rushCraft.kit.SpecialItemListener
 import com.github.bea4dev.rushCraft.kit.ThrowingKnife
 import com.github.bea4dev.rushCraft.kit.TntManager
+import com.github.bea4dev.rushCraft.kit.TrapManager
 import com.github.bea4dev.rushCraft.listener.MatchListener
 import com.github.bea4dev.rushCraft.manager.BUNGEE_CHANNEL
 import com.github.bea4dev.rushCraft.manager.MatchManager
@@ -53,6 +57,10 @@ class RushCraft : JavaPlugin() {
             ThrowingKnife.schedule()
             TntManager.schedule()
             Swapper.schedule()
+            InstantWall.schedule()
+            MaceManager.schedule()
+            SpearManager.schedule()
+            TrapManager.schedule()
             ItemRecharge.schedule()
             MatchManager.start(config, MapRegistry.all())
         }
@@ -63,6 +71,10 @@ class RushCraft : JavaPlugin() {
         ShieldManager.reset(restore = true)
         ThrowingKnife.reset()
         TntManager.reset()
+        InstantWall.reset()
+        MaceManager.reset()
+        SpearManager.reset()
+        TrapManager.reset()
         Translations.unregister()
     }
 }

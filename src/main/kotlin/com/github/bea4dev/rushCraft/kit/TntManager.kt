@@ -2,6 +2,7 @@ package com.github.bea4dev.rushCraft.kit
 
 import com.github.bea4dev.rushCraft.manager.MatchManager
 import com.github.bea4dev.rushCraft.match.CombatTracker
+import com.github.bea4dev.rushCraft.match.MatchTeam
 import com.github.bea4dev.rushCraft.match.TeamColor
 import com.github.bea4dev.rushCraft.scheduler.Tickable
 import net.kyori.adventure.sound.Sound
@@ -28,7 +29,11 @@ import kotlin.random.Random
  * - 爆発までの時間はランダム。TNT の位置から鳴る音がだんだん速く・高くなって爆発する
  * - 投げた TNT は近くの敵に強制的に持たせる。持っている人は爆発で即死し、周り 2.5 ブロック以内も即死
  *   (投げた人のチームの味方は巻き込まない)
+ * - 着火してから一度も投げていない間は、着火した人の味方も巻き込まない
+ *   (スワッパーで敵に渡して味方を巻き込ませるような、わざと味方を巻き込む行為の対策)
  * - 持たされた人も、時間内ならクリックで投げ返せる。投げた人がその TNT の新しい持ち主になる
+ * - スワッパーで位置を入れ替えると、持っている TNT も入れ替わり、所有者も入れ替わる
+ * - 飛んでいる TNT はパリィで弾き返せる (弾き返した人が新しい持ち主になる)
  * - 誰にも当たらなければ、持ち主 (最後に投げた人) の元へ飛んで戻ってくる (奈落に落ちても戻ってくる)。
  *   投げている間・戻る途中に時間切れになったときは、戻りきってから爆発する (爆発直前に投げても避けられない)
  * - 持ち主の手を離れている間は、持ち主と TNT をパーティクルの線で結ぶ
@@ -81,6 +86,7 @@ object TntManager : Tickable {
      */
     private class Tnt(
         var origin: UUID?,
+        val originTeam: MatchTeam?,
         var owner: UUID,
         var color: TeamColor?,
         var display: BlockDisplay,
@@ -101,6 +107,9 @@ object TntManager : Tickable {
 
         /** 持ち主が死んだ・抜けた (もう戻らない) */
         var orphan = false
+
+        /** 一度でも投げられたか */
+        var thrown = false
 
         fun owner(): Player? = if (orphan) null else Bukkit.getPlayer(owner)?.takeIf { Combatants.isTarget(it) }
 
@@ -134,8 +143,8 @@ object TntManager : Tickable {
 
         val position = holdPosition(player)
         val display = spawnDisplay(position)
-        val color = MatchManager.match?.getTeam(player)?.color
-        tnts += Tnt(player.uniqueId, player.uniqueId, color, display, position, Random.nextInt(MIN_FUSE_TICKS, MAX_FUSE_TICKS + 1))
+        val team = MatchManager.match?.getTeam(player)
+        tnts += Tnt(player.uniqueId, team, player.uniqueId, team?.color, display, position, Random.nextInt(MIN_FUSE_TICKS, MAX_FUSE_TICKS + 1))
 
         playSound(position, org.bukkit.Sound.ENTITY_TNT_PRIMED, 1f, 1f)
         player.sendActionBar(Component.translatable("rushcraft.kit.tnt.ignited", NamedTextColor.RED))
@@ -169,6 +178,7 @@ object TntManager : Tickable {
         tnt.owner = player.uniqueId
         tnt.color = MatchManager.match?.getTeam(player)?.color
         tnt.orphan = false
+        tnt.thrown = true
         tnt.state = State.FLYING
         tnt.stateTicks = 0
         tnt.landedTicks = -1
@@ -245,6 +255,20 @@ object TntManager : Tickable {
     private fun tickFlying(tnt: Tnt) {
         val world = tnt.position.world
         val owner = Bukkit.getPlayer(tnt.owner)
+
+        // パリィ中の敵に向かっていれば、矢と同じように弾き返す
+        val parrier = ShieldManager.findParrying(tnt.position, tnt.velocity) {
+            it.uniqueId != tnt.owner && Combatants.isTarget(it) && (owner == null || Combatants.isEnemy(owner, it))
+        }
+        if (parrier != null) {
+            tnt.velocity.multiply(-1)
+            tnt.owner = parrier.uniqueId
+            tnt.color = MatchManager.match?.getTeam(parrier)?.color
+            tnt.orphan = false
+            tnt.stateTicks = 0
+            ShieldManager.parried(parrier)
+            return
+        }
 
         // 近くの敵に持たせる
         val catcher = world.getNearbyEntitiesByType(Player::class.java, tnt.position, CATCH_RADIUS)
@@ -379,14 +403,16 @@ object TntManager : Tickable {
         world.spawnParticle(Particle.EXPLOSION_EMITTER, center, 1)
         playSound(center, org.bukkit.Sound.ENTITY_GENERIC_EXPLODE, 4f, 1f)
 
+        val match = MatchManager.match
         val owner = Bukkit.getPlayer(tnt.owner)
-        val ownerTeam = owner?.let { MatchManager.match?.getTeam(it) }
+        // 持ち主のチームの味方は巻き込まない (持ち主本人は巻き込む)。
+        // 一度も投げていなければ、着火した人のチームの味方も巻き込まない
+        val safeTeams = setOfNotNull(owner?.let { match?.getTeam(it) }, tnt.originTeam.takeIf { !tnt.thrown })
         val victims = linkedSetOf<Player>()
         tnt.holder()?.let { if (Combatants.isTarget(it)) victims += it }
         for (player in world.getNearbyEntitiesByType(Player::class.java, center, KILL_RADIUS + 2.0)) {
             if (!Combatants.isTarget(player)) continue
-            // 持ち主のチームの味方は巻き込まない (持ち主本人は巻き込む)
-            if (player != owner && ownerTeam != null && MatchManager.match?.getTeam(player) == ownerTeam) continue
+            if (player != owner && match?.getTeam(player) in safeTeams) continue
             if (distanceToBody(player, center) <= KILL_RADIUS) victims += player
         }
 
@@ -432,6 +458,30 @@ object TntManager : Tickable {
     // ------------------------------------------------------------------
     // 後片付け
     // ------------------------------------------------------------------
+
+    /**
+     * スワッパーで a と b の位置が入れ替わった。持っている TNT はその場に残るので持つ人が入れ替わり、
+     * 所有者も入れ替わる。
+     */
+    fun onSwap(a: Player, b: Player) {
+        val ids = mapOf(a.uniqueId to b.uniqueId, b.uniqueId to a.uniqueId)
+        for (tnt in tnts) {
+            if (tnt.orphan) continue
+            val holder = tnt.holder
+            if (tnt.state == State.HELD && holder != null && holder in ids) {
+                tnt.holder = ids.getValue(holder)
+                // 入れ替わった直後のクリックで投げてしまわないようにする
+                tnt.stateTicks = 0
+            }
+            ids[tnt.owner]?.let { newOwner ->
+                tnt.owner = newOwner
+                tnt.color = Bukkit.getPlayer(newOwner)?.let { MatchManager.match?.getTeam(it)?.color }
+            }
+            if (tnt.state == State.HELD && holder in ids && tnt.holder != tnt.owner) {
+                tnt.holder()?.sendActionBar(Component.translatable("rushcraft.kit.tnt.caught", NamedTextColor.RED))
+            }
+        }
+    }
 
     /**
      * プレイヤーが倒れた・抜けた。持っていた TNT はその場に落とし、

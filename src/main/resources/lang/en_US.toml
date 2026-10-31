@@ -5,14 +5,15 @@ start = "          The match has started!"
 lobby = "Sending you to the lobby..."
 restart = "The server is restarting"
 spectating = "You are spectating."
-spectating-join = "[Join a team]"
-spectating-join-hover = "Click to open the team selector"
+spectating-join = "[Join the match]"
+spectating-join-hover = "Click to join the match"
 
 [match.death]
 void = "{0} was knocked into the void by {1}"
 knife = "{0} was taken down by {1}''s throwing knife"
 tnt = "{0} was blown up by {1}''s TNT"
 tnt-self = "{0} was blown up by their own TNT"
+trap = "{0} stepped on {1}''s trap"
 
 [match.waiting]
 need = "{0} more player(s) needed to start the game"
@@ -22,7 +23,7 @@ countdown = "The match starts in {0} seconds"
 winner = "{0} wins!"
 draw = "Draw!"
 countdown = "Next game in {0} seconds"
-lobby = "Returning to the lobby in {0} seconds"
+lobby = "Restarting in {0} seconds"
 
 [match.status]
 need = "Waiting for {0} more"
@@ -69,9 +70,6 @@ joined = "You joined {0}"
 already = "You are already on {0}"
 closed = "You cannot join a team right now"
 full = "There is no team you can join"
-running = "You cannot change teams during the match"
-unbalanced = "That team already has more players"
-unknown = "Team \"{0}\" does not exist"
 
 [command.spectate]
 done = "You are now spectating. Use /join to join a team"
@@ -90,6 +88,7 @@ no-spawns = "{0} has no spawns"
 duplicate-team = "Team id \"{0}\" is duplicated"
 duplicate-color = "Another team has the same color as {0}"
 single-team = "There is only one team (testing only)"
+invalid-trap-plate = "Trap plate \"{0}\" is not a pressure plate"
 
 [map.problem.ctw]
 no-wools = "No wools are configured"
@@ -243,9 +242,10 @@ copied = "Kit set ({0} items)"
 give = "Receive kit"
 
 [team-menu]
-title = "Select Team"
-description = "Map: {0} / Gamemode: {1}\nChoose a team to join"
-auto = "Auto"
+title = "Join the Match"
+description = "Map: {0} / Gamemode: {1}\nYou will be placed on the team with fewer players"
+join = "Join"
+current = "Your team: {0}"
 spectate = "Spectate"
 close = "Close"
 
@@ -258,17 +258,25 @@ classic_sword-description = "An iron sword without attack cooldown"
 classic_bow = "Classic Bow"
 classic_bow-description = "A bow with Power I (comes with 32 arrows)"
 shield = "Shield"
-shield-description = "Guarding wears it down and it breaks in about 5 seconds (it comes back 10 seconds after breaking). Right after lowering it you can parry: melee attackers are knocked away and stunned, and arrows are reflected. A successful parry fully repairs it"
+shield-description = "Guarding wears it down and it breaks in about 5 seconds (it recovers 10 seconds after last use, and comes back 10 seconds after breaking). Right after lowering it you can parry: melee attackers are knocked away and stunned, and everything thrown at you is reflected. A successful parry fully repairs it"
 swapper = "Swapper"
 swapper-description = "Throw it to damage an enemy and swap places with them. It returns to you after being thrown"
 throwing_knife = "Throwing Knife"
 throwing_knife-description = "Right-click to throw. Takes down an enemy in one hit. Comes back 30 seconds after throwing"
-tnt = "TNT"
-tnt-description = "Right-click to light it and hold it up, then click (left or right) to throw. The TNT sticks to a nearby enemy and, when it explodes, takes down the holder and enemies within 2.5 blocks. The enemy can throw it back while there is time left. If it hits no one, it comes back to you before exploding (the fuse time is random). Comes back 15 seconds after exploding"
+tnt = "Sticky TNT"
+tnt-description = "Click (left or right) to light it and hold it up, then click again to throw. The TNT sticks to a nearby enemy and, when it explodes, takes down the holder and enemies within 2.5 blocks. The enemy can throw it back while there is time left. If it hits no one, it comes back to you before exploding (the fuse time is random). Comes back 15 seconds after exploding"
+instant_wall = "Instant Wall"
+instant_wall-description = "Right-click a block to raise a 5-wide, 3-high glass wall across your view. Players where the wall rises are launched upward. Comes back 15 seconds after use"
+mace = "Mace"
+mace-description = "Sneak while holding it to charge, then stop sneaking once charged to leap forward and high into the air. Watch out for fall damage"
+spear = "Spear"
+spear-description = "An iron spear with Lunge II. Attacking lunges you forward, and for 0.8 seconds afterwards enemies around you are hit too. Breaks after 3 uses and comes back after 20 seconds"
+trap = "Trap"
+trap-description = "A pressure plate that explodes when an enemy steps on it, taking down enemies within 2.5 blocks. Nothing happens when you or your teammates step on it. You get 10 per spawn and can have up to 10 placed; placing an 11th sets off your oldest one. A broken trap drops nothing"
 
 [kit.ui]
-team-selector = "Select Team"
-team-selector-lore = "Click to open the team selector"
+team-selector = "Join the Match"
+team-selector-lore = "Click to open the join menu"
 kit-selector = "Select Kit"
 kit-selector-lore = "Click to open the kit selector (applied on next spawn)"
 
@@ -291,6 +299,7 @@ not-participant = "You are not on a team"
 
 [kit.shield]
 broken = "Your shield broke! (back in {0} seconds)"
+gauge = "Shield"
 parry = "Parry!"
 stunned = "Stunned!"
 
@@ -302,3 +311,10 @@ denied = "You can''t swap places with that spot"
 ignited = "Lit! Click to throw"
 caught = "You''re stuck with the TNT! Click to throw it back!"
 returned = "Your TNT came back! Click to throw"
+
+[kit.mace]
+ready = "Stop sneaking to leap!"
+interrupted = "Your charge was interrupted"
+
+[kit.spear]
+broken = "Your spear broke! (back in {0} seconds)"
