@@ -22,8 +22,17 @@ enum class SpecialItem(val id: String, val icon: Material) {
     /** 射撃ダメージ増加 I だけの弓 (矢付き) */
     CLASSIC_BOW("classic_bow", Material.BOW),
 
-    /** ガードで耐久が減り、ガード解除の直後にパリィできる盾 */
-    SHIELD("shield", Material.SHIELD);
+    /** ガードで耐久が減り、ガード解除の直後にパリィできる盾 (壊れても 10 秒で復活) */
+    SHIELD("shield", Material.SHIELD),
+
+    /** 投げて当てた敵と位置を入れ替えるトライデント (忠誠で戻ってくる) */
+    SWAPPER("swapper", Material.TRIDENT),
+
+    /** 当たった敵を一撃で倒す投げナイフ (1 回のスポーンにつき 1 回) */
+    THROWING_KNIFE("throwing_knife", Material.FLINT),
+
+    /** 着火して構え、投げると近くの敵に持たせる TNT (1 回のスポーンにつき 1 回) */
+    TNT("tnt", Material.TNT);
 
     val nameKey: String
         get() = "rushcraft.kit.special.$id"
@@ -67,6 +76,16 @@ enum class SpecialItem(val id: String, val icon: Material) {
                     }
                 },
             )
+
+            SWAPPER -> listOf(
+                2 to named(ItemStack(Material.TRIDENT)).also { stack ->
+                    stack.editMeta { meta -> meta.addEnchant(Enchantment.LOYALTY, 3, true) }
+                },
+            )
+
+            THROWING_KNIFE -> listOf(3 to named(ItemStack(Material.FLINT)))
+
+            TNT -> listOf(4 to named(ItemStack(Material.TNT)))
         }.onEach { (_, stack) -> KitManager.markSpecial(stack, this) }
     }
 

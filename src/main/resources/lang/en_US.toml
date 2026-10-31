@@ -10,6 +10,9 @@ spectating-join-hover = "Click to open the team selector"
 
 [match.death]
 void = "{0} was knocked into the void by {1}"
+knife = "{0} was taken down by {1}''s throwing knife"
+tnt = "{0} was blown up by {1}''s TNT"
+tnt-self = "{0} was blown up by their own TNT"
 
 [match.waiting]
 need = "{0} more player(s) needed to start the game"
@@ -246,13 +249,22 @@ auto = "Auto"
 spectate = "Spectate"
 close = "Close"
 
+[kit]
+recharged = "Your {0} is back!"
+
 [kit.special]
 classic_sword = "Classic Iron Sword"
 classic_sword-description = "An iron sword without attack cooldown"
 classic_bow = "Classic Bow"
 classic_bow-description = "A bow with Power I (comes with 32 arrows)"
 shield = "Shield"
-shield-description = "Guarding wears it down and it breaks in about 5 seconds. Right after lowering it you can parry: melee attackers are knocked away and stunned, and arrows are reflected. A successful parry fully repairs it"
+shield-description = "Guarding wears it down and it breaks in about 5 seconds (it comes back 10 seconds after breaking). Right after lowering it you can parry: melee attackers are knocked away and stunned, and arrows are reflected. A successful parry fully repairs it"
+swapper = "Swapper"
+swapper-description = "Throw it to damage an enemy and swap places with them. It returns to you after being thrown"
+throwing_knife = "Throwing Knife"
+throwing_knife-description = "Right-click to throw. Takes down an enemy in one hit. Comes back 30 seconds after throwing"
+tnt = "TNT"
+tnt-description = "Right-click to light it and hold it up, then click (left or right) to throw. The TNT sticks to a nearby enemy and, when it explodes, takes down the holder and enemies within 2.5 blocks. The enemy can throw it back while there is time left. If it hits no one, it comes back to you before exploding (the fuse time is random). Comes back 15 seconds after exploding"
 
 [kit.ui]
 team-selector = "Select Team"
@@ -262,14 +274,31 @@ kit-selector-lore = "Click to open the kit selector (applied on next spawn)"
 
 [kit.menu]
 title = "Select Kit"
-description = "Choose up to {0} special items. Your choice is applied on your next spawn"
-confirm = "Confirm"
+description = "Choose up to {0} special items. Click a slot to pick an item. Your choice is applied on your next spawn"
+slot = "Slot {0}: {1}"
+empty = "None"
+slot-change = "Click to change"
+slot-choose = "Click to choose"
+items-title = "Items for slot {0}"
+item-selected = "Selected in this slot"
+item-choose = "Click to choose"
+item-swap = "Selected in slot {0} (click to swap)"
+back = "Back"
+clear = "Clear this slot"
 close = "Close"
-too-many = "You can choose up to {0} items"
 saved = "Kit saved. It will be applied on your next spawn"
 not-participant = "You are not on a team"
 
 [kit.shield]
-broken = "Your shield broke!"
+broken = "Your shield broke! (back in {0} seconds)"
 parry = "Parry!"
 stunned = "Stunned!"
+
+[kit.swapper]
+swapped = "Swapped!"
+denied = "You can''t swap places with that spot"
+
+[kit.tnt]
+ignited = "Lit! Click to throw"
+caught = "You''re stuck with the TNT! Click to throw it back!"
+returned = "Your TNT came back! Click to throw"

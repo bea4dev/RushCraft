@@ -157,6 +157,8 @@ class KitListener : Listener {
 
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     fun onStunnedAttack(event: EntityDamageByEntityEvent) {
+        // 特殊アイテムによる即死 (爆発までにスタンしていても TNT は有効)
+        if (event.cause == EntityDamageEvent.DamageCause.KILL) return
         val attacker = when (val damager = event.damager) {
             is Player -> damager
             is Projectile -> damager.shooter as? Player

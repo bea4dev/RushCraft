@@ -7,6 +7,9 @@ match: {
     spectating-join-hover: string,
     death: {
         void: string,
+        knife: string,
+        tnt: string,
+        tnt-self: string,
     },
     waiting: {
         need: string,
@@ -247,6 +250,7 @@ team-menu: {
     close: string,
 },
 kit: {
+    recharged: string,
     special: {
         classic_sword: string,
         classic_sword-description: string,
@@ -254,6 +258,12 @@ kit: {
         classic_bow-description: string,
         shield: string,
         shield-description: string,
+        swapper: string,
+        swapper-description: string,
+        throwing_knife: string,
+        throwing_knife-description: string,
+        tnt: string,
+        tnt-description: string,
     },
     ui: {
         team-selector: string,
@@ -264,9 +274,17 @@ kit: {
     menu: {
         title: string,
         description: string,
-        confirm: string,
+        slot: string,
+        empty: string,
+        slot-change: string,
+        slot-choose: string,
+        items-title: string,
+        item-selected: string,
+        item-choose: string,
+        item-swap: string,
+        back: string,
+        clear: string,
         close: string,
-        too-many: string,
         saved: string,
         not-participant: string,
     },
@@ -274,5 +292,14 @@ kit: {
         broken: string,
         parry: string,
         stunned: string,
+    },
+    swapper: {
+        swapped: string,
+        denied: string,
+    },
+    tnt: {
+        ignited: string,
+        caught: string,
+        returned: string,
     },
 }

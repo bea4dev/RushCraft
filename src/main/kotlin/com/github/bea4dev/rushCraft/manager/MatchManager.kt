@@ -5,7 +5,10 @@ import com.github.bea4dev.rushCraft.config.LobbyMode
 import com.github.bea4dev.rushCraft.config.PluginConfig
 import com.github.bea4dev.rushCraft.config.RestartMethod
 import com.github.bea4dev.rushCraft.kit.KitManager
+import com.github.bea4dev.rushCraft.kit.ItemRecharge
 import com.github.bea4dev.rushCraft.kit.ShieldManager
+import com.github.bea4dev.rushCraft.kit.ThrowingKnife
+import com.github.bea4dev.rushCraft.kit.TntManager
 import com.github.bea4dev.rushCraft.map.MapDefinition
 import com.github.bea4dev.rushCraft.map.MapWorlds
 import com.github.bea4dev.rushCraft.match.CombatTracker
@@ -266,6 +269,9 @@ object MatchManager : Tickable {
     private fun finishMatch() {
         state = MatchState.Finished(config.finishedSeconds)
         ShieldManager.reset(restore = false)
+        ThrowingKnife.reset()
+        TntManager.reset()
+        ItemRecharge.reset()
         CombatTracker.reset()
         for (player in Bukkit.getOnlinePlayers()) {
             prepareLobby(player, teleport = false)

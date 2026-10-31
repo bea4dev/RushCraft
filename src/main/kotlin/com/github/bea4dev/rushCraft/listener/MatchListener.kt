@@ -85,19 +85,30 @@ class MatchListener : Listener {
     fun onDeath(event: PlayerDeathEvent) {
         val match = MatchManager.match ?: return
         val victim = event.player
+        val special = CombatTracker.takeSpecialDeath(victim)
         val lastAttacker = CombatTracker.lastAttacker(victim)
         CombatTracker.clear(victim)
         if (!MatchManager.isRunning(victim.world)) return
 
         // 奈落に突き落とした場合は、バニラのキル判定 (5 秒) が切れていても最後に攻撃したプレイヤーのキルにする
         val isVoid = victim.lastDamageCause?.cause == EntityDamageEvent.DamageCause.VOID
-        val knocker = if (isVoid) {
+        val knocker = if (isVoid && special == null) {
             victim.killer ?: lastAttacker?.takeIf { it.world == victim.world && match.getTeam(it) != null }
         } else {
             null
         }
 
-        if (knocker != null) {
+        val specialKiller = special?.killer?.let(Bukkit::getPlayer)
+        if (special != null) {
+            // 投げナイフ・TNT などの即死
+            event.deathMessage(
+                Component.translatable(
+                    special.messageKey,
+                    victim.displayName(),
+                    specialKiller?.displayName() ?: Component.text("?"),
+                )
+            )
+        } else if (knocker != null) {
             event.deathMessage(
                 Component.translatable("rushcraft.match.death.void", victim.displayName(), knocker.displayName())
             )
@@ -114,7 +125,7 @@ class MatchListener : Listener {
             }
         }
 
-        val killer = victim.killer ?: knocker ?: return
+        val killer = specialKiller ?: victim.killer ?: knocker ?: return
         if (killer == victim || match.getTeam(killer) == null) return
         val kills = match.addKill(killer)
         MatchManager.bukkit?.setTabScore(killer, kills)

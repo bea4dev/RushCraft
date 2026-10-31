@@ -3,6 +3,7 @@ package com.github.bea4dev.rushCraft.kit
 import com.github.bea4dev.rushCraft.config.KitConfig
 import com.github.bea4dev.rushCraft.map.MapDefinition
 import com.github.bea4dev.rushCraft.match.MatchTeam
+import com.github.bea4dev.rushCraft.match.TeamColor
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.text.format.TextDecoration
@@ -30,7 +31,8 @@ object KitManager {
     lateinit var config: KitConfig
         private set
 
-    private val selections = HashMap<UUID, List<SpecialItem>>()
+    /** 特殊アイテムの枠ごとの選択 (null は空き) */
+    private val selections = HashMap<UUID, List<SpecialItem?>>()
 
     fun initialize(config: KitConfig) {
         this.config = config
@@ -40,12 +42,25 @@ object KitManager {
     // 特殊アイテムの選択
     // ------------------------------------------------------------------
 
-    fun selection(player: Player): List<SpecialItem> {
-        return selections[player.uniqueId] ?: SpecialItem.entries.take(config.maxSpecialItems)
+    /** 枠ごとの選択 (長さは maxSpecialItems) */
+    fun slots(player: Player): List<SpecialItem?> {
+        val slots = selections[player.uniqueId] ?: SpecialItem.entries.take(config.maxSpecialItems)
+        return List(config.maxSpecialItems) { slots.getOrNull(it) }
     }
 
-    fun select(player: Player, items: List<SpecialItem>) {
-        selections[player.uniqueId] = items.distinct().sortedBy { it.ordinal }.take(config.maxSpecialItems)
+    /** 選択中の特殊アイテム (枠の順) */
+    fun selection(player: Player): List<SpecialItem> = slots(player).filterNotNull().distinct()
+
+    /**
+     * index 番目の枠に special を選ぶ。既に別の枠で選んでいる場合は、その枠と入れ替える。
+     */
+    fun select(player: Player, index: Int, special: SpecialItem?) {
+        val slots = slots(player).toMutableList()
+        if (index !in slots.indices) return
+        val other = if (special != null) slots.indexOf(special) else -1
+        if (other >= 0 && other != index) slots[other] = slots[index]
+        slots[index] = special
+        selections[player.uniqueId] = slots
     }
 
     // ------------------------------------------------------------------
@@ -63,21 +78,32 @@ object KitManager {
 
         val items = mutableListOf<Pair<Int, ItemStack>>()
         for (special in selection(player)) {
-            items += special.createItems(team.color).onEach { (_, stack) ->
-                if (!config.specialDropOnDeath) markNoDrop(stack)
-            }
+            items += createSpecialItems(special, team.color)
         }
         items += map.kit.createItems(team.color).onEach { (_, stack) ->
             if (!map.kit.dropOnDeath) markNoDrop(stack)
         }
 
         for ((slot, stack) in items) {
-            val current = inventory.getItem(slot)
-            if (current == null || current.isEmpty) {
-                inventory.setItem(slot, stack)
-            } else {
-                inventory.addItem(stack)
-            }
+            give(player, slot, stack)
+        }
+    }
+
+    /** 特殊アイテムを作る (設定に応じて死亡時にドロップしない印を付ける) */
+    fun createSpecialItems(special: SpecialItem, color: TeamColor?): List<Pair<Int, ItemStack>> {
+        return special.createItems(color).onEach { (_, stack) ->
+            if (!config.specialDropOnDeath) markNoDrop(stack)
+        }
+    }
+
+    /** slot が空いていればそこに、埋まっていれば空いている場所に入れる */
+    fun give(player: Player, slot: Int, stack: ItemStack) {
+        val inventory = player.inventory
+        val current = inventory.getItem(slot)
+        if (current == null || current.isEmpty) {
+            inventory.setItem(slot, stack)
+        } else {
+            inventory.addItem(stack)
         }
     }
 

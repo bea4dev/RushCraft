@@ -9,6 +9,9 @@ spectating-join-hover = "クリックでチーム選択画面を開く"
 
 [match.death]
 void = "{0}は{1}によって奈落に突き落とされた"
+knife = "{0}は{1}の投げナイフに倒れた"
+tnt = "{0}は{1}のTNTで爆死した"
+tnt-self = "{0}は自分のTNTで爆死した"
 
 [match.waiting]
 need = "ゲームを開始するにはあと{0}人必要です"
@@ -245,13 +248,22 @@ auto = "おまかせ"
 spectate = "観戦する"
 close = "閉じる"
 
+[kit]
+recharged = "{0} が復活した！"
+
 [kit.special]
 classic_sword = "クラシックな鉄剣"
 classic_sword-description = "攻撃のクールダウンがない鉄剣"
 classic_bow = "クラシックな弓"
 classic_bow-description = "射撃ダメージ増加 I の弓 (矢 32 本付き)"
 shield = "盾"
-shield-description = "ガードすると耐久が減り、約 5 秒で壊れる。ガード解除の直後にパリィでき、近接攻撃してきた敵をふっとばしてスタンさせ、矢を弾き返す。パリィに成功すると耐久が全回復する"
+shield-description = "ガードすると耐久が減り、約 5 秒で壊れる (壊れても 10 秒で復活)。ガード解除の直後にパリィでき、近接攻撃してきた敵をふっとばしてスタンさせ、矢を弾き返す。パリィに成功すると耐久が全回復する"
+swapper = "スワッパー"
+swapper-description = "投げて当てた敵にダメージを与え、位置を入れ替える。投げた後は手元に戻ってくる"
+throwing_knife = "投げナイフ"
+throwing_knife-description = "右クリックで投げる。当たった敵を一撃で倒す。投げてから 30 秒で復活する"
+tnt = "TNT"
+tnt-description = "右クリックで着火して構え、クリック (左右どちらでも) で投げる。投げた TNT は近くの敵に持たせ、爆発すると持っている敵と周り 2.5 ブロックの敵を倒す。持たされた敵も時間内なら投げ返せる。誰にも当たらなければ手元に戻ってきてから爆発する (爆発までの時間はランダム)。爆発してから 15 秒で復活する"
 
 [kit.ui]
 team-selector = "チーム選択"
@@ -261,14 +273,31 @@ kit-selector-lore = "クリックでキット選択画面を開く (次のスポ
 
 [kit.menu]
 title = "キット選択"
-description = "特殊アイテムを最大 {0} 個まで選べます。選択は次のスポーンから反映されます"
-confirm = "決定"
+description = "特殊アイテムを {0} 個まで選べます。枠をクリックしてアイテムを選んでください。選択は次のスポーンから反映されます"
+slot = "枠 {0}: {1}"
+empty = "なし"
+slot-change = "クリックで変更"
+slot-choose = "クリックで選択"
+items-title = "枠 {0} のアイテム"
+item-selected = "この枠で選択中"
+item-choose = "クリックで選択"
+item-swap = "枠 {0} で選択中 (クリックで入れ替え)"
+back = "戻る"
+clear = "この枠を空にする"
 close = "閉じる"
-too-many = "選べるのは {0} 個までです"
 saved = "キットを設定しました。次のスポーンから反映されます"
 not-participant = "チームに参加していません"
 
 [kit.shield]
-broken = "盾が壊れた！"
+broken = "盾が壊れた！ ({0} 秒後に復活)"
 parry = "パリィ！"
 stunned = "スタン！"
+
+[kit.swapper]
+swapped = "入れ替え！"
+denied = "その場所とは入れ替えられない"
+
+[kit.tnt]
+ignited = "着火！ クリックで投げる"
+caught = "TNT を持たされた！ クリックで投げ返せ！"
+returned = "TNT が戻ってきた！ クリックで投げる"

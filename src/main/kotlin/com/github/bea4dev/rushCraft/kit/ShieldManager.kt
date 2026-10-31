@@ -14,6 +14,7 @@ import org.bukkit.Particle
 import org.bukkit.entity.AbstractArrow
 import org.bukkit.entity.ArmorStand
 import org.bukkit.entity.Player
+import org.bukkit.entity.Trident
 import org.bukkit.inventory.EquipmentSlot
 import org.bukkit.inventory.ItemStack
 import org.bukkit.inventory.meta.Damageable
@@ -25,6 +26,7 @@ import java.util.UUID
  *
  * - ガード中は耐久が徐々に減り、約 5 秒で壊れる
  * - ガードしたまま攻撃を受けると耐久が最大値の 1/2 減る
+ * - 壊れてから 10 秒で復活する
  * - ガードを解除してから 2 tick の間はパリィ状態になる
  *   - 一度パリィ受付をすると、3 秒経つかパリィに成功するまで次のパリィ受付はできない
  *   - 近接攻撃してきた敵をふっとばしてスタンさせる
@@ -45,6 +47,9 @@ object ShieldManager : Tickable {
 
     /** ガード中に攻撃を受けたときに減る耐久の割合 */
     private const val BLOCKED_HIT_DAMAGE_RATIO = 0.5
+
+    /** 壊れてから復活するまでの tick 数 */
+    private const val RESTORE_TICKS = 200
 
     /** 矢を弾き返す範囲 */
     private const val ARROW_RADIUS = 3.5
@@ -178,7 +183,10 @@ object ShieldManager : Tickable {
                 Sound.sound(org.bukkit.Sound.ITEM_SHIELD_BREAK, Sound.Source.PLAYER, 1f, 1f),
                 player.x, player.y, player.z,
             )
-            player.sendActionBar(Component.translatable("rushcraft.kit.shield.broken", NamedTextColor.RED))
+            player.sendActionBar(
+                Component.translatable("rushcraft.kit.shield.broken", NamedTextColor.RED, Component.text(RESTORE_TICKS / 20))
+            )
+            ItemRecharge.schedule(player, SpecialItem.SHIELD, RESTORE_TICKS)
         } else {
             player.inventory.setItem(hand, stack)
         }
@@ -204,7 +212,7 @@ object ShieldManager : Tickable {
     /**
      * パリィ成功。盾の耐久を全回復する。
      */
-    private fun parried(player: Player) {
+    fun parried(player: Player) {
         repair(player)
         guards[player.uniqueId]?.let {
             it.drain = 0.0
@@ -254,6 +262,11 @@ object ShieldManager : Tickable {
     }
 
     private fun reflect(arrow: AbstractArrow, player: Player) {
+        if (arrow is Trident) {
+            // スワッパーは持ち主に戻るよう、持ち主は変えずに叩き落とす
+            arrow.velocity = arrow.velocity.multiply(-0.2)
+            return
+        }
         arrow.velocity = arrow.velocity.multiply(-1)
         arrow.shooter = player
     }
