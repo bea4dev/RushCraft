@@ -1,6 +1,14 @@
 # !tyml lang.tyml
 [match]
-start = "試合開始！"
+start = "          試合開始！"
+lobby = "ロビーへ移動します..."
+restart = "サーバーを再起動しています"
+spectating = "観戦中です。"
+spectating-join = "[チームに参加する]"
+spectating-join-hover = "クリックでチーム選択画面を開く"
+
+[match.death]
+void = "{0}は{1}によって奈落に突き落とされた"
 
 [match.waiting]
 need = "ゲームを開始するにはあと{0}人必要です"
@@ -10,3 +18,257 @@ countdown = "ゲーム開始まで{0}秒"
 winner = "{0}の勝利！"
 draw = "引き分け！"
 countdown = "次のゲームまで{0}秒"
+lobby = "ロビーへ移動するまで{0}秒"
+
+[match.status]
+need = "あと{0}人で開始"
+starting = "開始まで {0}秒"
+elapsed = "経過時間 {0}"
+remaining = "残り時間 {0}"
+finished = "試合終了"
+
+[match.build]
+denied = "ここでは建築できません"
+
+[match.room]
+denied = "ここには入れません"
+
+[match.ctw]
+name = "羊毛奪取 & 設置 (CTW)"
+touched = "{0} が {1} を取得しました！"
+placed = "{0} が {1} を設置しました！"
+
+[match.ctw.monument]
+wrong = "ここには {0} の {1} しか設置できません"
+protected = "モニュメントは破壊できません"
+
+[match.ctw.wool]
+protected = "この羊毛は相手チームの目標なので扱えません"
+
+[team]
+red = "赤チーム"
+blue = "青チーム"
+aqua = "水色チーム"
+yellow = "黄チーム"
+green = "緑チーム"
+orange = "橙チーム"
+purple = "紫チーム"
+pink = "桃チーム"
+
+[command]
+usage = "使い方: {0}"
+player-only = "このコマンドはプレイヤーのみ実行できます"
+no-match = "現在試合は行われていません"
+
+[command.join]
+joined = "{0} に参加しました"
+already = "既に {0} に参加しています"
+closed = "現在はチームに参加できません"
+full = "参加できるチームがありません"
+running = "試合中はチームを変更できません"
+unbalanced = "人数差が開くためそのチームには参加できません"
+unknown = "チーム \"{0}\" は存在しません"
+
+[command.spectate]
+done = "観戦者になりました。/join でチームに参加できます"
+already = "既に観戦者です"
+
+[command.admin]
+started = "カウントダウンを開始しました"
+not-waiting = "待機中ではありません"
+ended = "試合を終了しました"
+not-running = "試合中ではありません"
+status = "マップ: {0} / 状態: {1} / 参加者: {2}人"
+
+[map.problem]
+no-teams = "チームがありません"
+no-spawns = "{0} のスポーンがありません"
+duplicate-team = "チーム ID \"{0}\" が重複しています"
+duplicate-color = "{0} と同じ色のチームがあります"
+single-team = "チームが 1 つしかありません (テスト用)"
+
+[map.problem.ctw]
+no-wools = "羊毛が設定されていません"
+unknown-team = "{0} のチーム \"{1}\" が存在しません"
+no-monument = "{0} のモニュメントが設定されていません"
+duplicate-monument = "モニュメント ({0}) が重複しています"
+duplicate-wool = "同じチームに {0} が重複しています"
+team-without-wool = "{0} に羊毛がありません"
+
+[setup]
+disabled = "セットアップモードではありません (config.toml の setup-mode を true にしてください)"
+invalid-id = "マップ ID \"{0}\" は使用できません (英小文字・数字・_・- のみ)"
+exists = "マップ \"{0}\" は既に存在します"
+created = "マップ \"{0}\" を作成しました"
+imported = "ワールド \"{0}\" をマップ \"{1}\" として取り込みました"
+not-found = "マップ \"{0}\" が見つかりません"
+editing = "{0} を編集中です。ネザースターでメニュー、ブレイズロッドで範囲選択ができます"
+saved = "{0} を保存しました"
+save-failed = "保存に失敗しました。コンソールを確認してください"
+problems = "{0} 件の問題があります:"
+left-unsaved = "未保存の変更があります。編集用ワールドには残っているので、/rcmap edit で再開して保存してください"
+discarded = "マップ \"{0}\" の未保存の変更を破棄しました"
+list = "マップ一覧:"
+not-editing = "マップを編集していません (/rcmap edit <id>)"
+unknown-gamemode = "ルール \"{0}\" は存在しません"
+
+[setup.import]
+not-found = "ワールドフォルダ \"{0}\" が見つかりません"
+
+[setup.tool]
+menu = "セットアップメニュー"
+menu-lore = "右クリックでメニューを開く"
+wand = "範囲選択ワンド"
+wand-lore = "左クリック: 始点 / 右クリック: 終点"
+
+[setup.wand]
+pos1 = "始点: {0}"
+pos2 = "終点: {0}"
+
+[setup.menu]
+close = "閉じる"
+back = "戻る"
+save = "保存"
+invalid-number = "数値が正しくありません"
+
+[setup.menu.main]
+title = "マップ設定: {0}"
+summary = "ID: {0} / ルール: {1} / チーム数: {2}"
+unsaved = "未保存の変更があります"
+valid = "問題はありません"
+info = "基本情報"
+spawn = "観戦スポーンを現在地に"
+spawn-tooltip = "待機中・観戦者のスポーンを現在地に設定します"
+teams = "チーム"
+wools = "羊毛"
+regions = "建築禁止エリア"
+kit = "キット"
+save = "マップを保存"
+save-tooltip = "ワールドと map.toml をテンプレートに書き戻します"
+leave = "編集を終了"
+leave-tooltip = "編集用ワールドから退出します (保存はされません)"
+
+[setup.menu.spawn]
+set = "観戦スポーンを {0} に設定しました"
+
+[setup.menu.info]
+title = "基本情報"
+description = "空欄の建築高度制限は無制限、試合時間 0 は無制限です"
+name = "マップ名"
+version = "バージョン"
+authors = "製作者 (カンマ区切り)"
+time-limit = "試合時間 (秒)"
+max-height = "建築高度制限 (Y座標)"
+time = "時刻 (0-24000)"
+lock-time = "時刻を固定する"
+
+[setup.menu.teams]
+title = "チーム"
+description = "チームを選択して編集します。() 内はスポーン数です"
+tooltip = "クリックで編集"
+add = "チームを追加"
+no-color = "使える色が残っていません"
+
+[setup.menu.team]
+title = "チーム設定: {0}"
+spawns = "スポーン: {0}個"
+id = "ID"
+color = "色"
+name = "表示名 (空欄で色の名前)"
+max-players = "最大人数 (0 で無制限)"
+invalid-id = "ID \"{0}\" は使用できないか、既に使われています"
+add-spawn = "スポーンを現在地に追加"
+add-spawn-tooltip = "現在の位置と向きをスポーンとして追加します"
+spawn-added = "{0} のスポーンを追加しました ({1}個)"
+remove-spawn = "最寄りのスポーンを削除"
+remove-spawn-tooltip = "現在地に一番近いスポーンを削除します"
+teleport = "スポーンへ移動"
+delete = "チームを削除"
+spawn-rooms = "スポーン部屋: {0}"
+add-room = "スポーン部屋を選択範囲で追加"
+add-room-tooltip = "選択範囲をスポーン部屋にします。他チームは入れず、誰も建築できません"
+clear-rooms = "スポーン部屋を全削除"
+
+[setup.menu.wools]
+title = "羊毛"
+description = "チームが奪取して設置する羊毛を設定します"
+add = "羊毛を追加"
+no-team = "先にチームを作成してください"
+monument = "モニュメント: {0}"
+no-monument = "モニュメント未設定"
+
+[setup.menu.wool]
+title = "羊毛設定: {0}"
+description = "チームがこの羊毛を奪取し、モニュメントの位置に設置すると達成です"
+team = "奪取するチーム"
+color = "羊毛の色"
+monument-adjacent = "モニュメント: 見ている面の隣"
+monument-adjacent-tooltip = "見ているブロックの、その面に隣接する位置 (ブロックを置く位置) をモニュメントにします"
+monument-target = "モニュメント: 見ているブロック"
+monument-target-tooltip = "見ているブロックの位置をモニュメントにします"
+monument-set = "モニュメントを {0} に設定しました"
+no-target = "ブロックを見ていません"
+teleport = "モニュメントへ移動"
+delete = "羊毛を削除"
+room = "羊毛部屋: {0}"
+spawners = "無限湧き: {0}"
+set-room = "羊毛部屋を選択範囲に設定"
+set-room-tooltip = "選択範囲を羊毛部屋にします。この羊毛を奪取するチーム以外は入れません"
+clear-room = "羊毛部屋を削除"
+add-spawner = "無限湧きを選択範囲で追加"
+add-spawner-tooltip = "範囲内のこの色の羊毛は壊れず、壊したプレイヤーに羊毛を配ります"
+clear-spawners = "無限湧きを全削除"
+
+[setup.menu.regions]
+title = "建築禁止エリア"
+description = "試合中にブロックを変更できないエリアです。ブレイズロッドで範囲を選択して追加します"
+selection = "選択範囲: {0} ～ {1}"
+add = "選択範囲を追加"
+no-selection = "範囲が選択されていません"
+wand = "ワンドを受け取る"
+delete = "エリア #{0} を削除"
+
+[setup.menu.kit]
+title = "キット"
+description = "試合開始時とリスポーン時に配られるアイテムです"
+count = "アイテム数: {0}"
+colored-armor = "革防具をチーム色に染める"
+copy = "インベントリから設定"
+copy-tooltip = "現在のインベントリ (防具・オフハンド含む) をキットにします"
+copied = "キットを設定しました ({0}個)"
+give = "キットを受け取る"
+
+[team-menu]
+title = "チーム選択"
+description = "マップ: {0} / ルール: {1}\n参加するチームを選んでください"
+auto = "おまかせ"
+spectate = "観戦する"
+close = "閉じる"
+
+[kit.special]
+classic_sword = "クラシックな鉄剣"
+classic_sword-description = "攻撃のクールダウンがない鉄剣"
+classic_bow = "クラシックな弓"
+classic_bow-description = "射撃ダメージ増加 I の弓 (矢 32 本付き)"
+shield = "盾"
+shield-description = "ガードすると耐久が減り、約 5 秒で壊れる。ガード解除の直後にパリィでき、近接攻撃してきた敵をふっとばしてスタンさせ、矢を弾き返す。パリィに成功すると耐久が全回復する"
+
+[kit.ui]
+team-selector = "チーム選択"
+team-selector-lore = "クリックでチーム選択画面を開く"
+kit-selector = "キット選択"
+kit-selector-lore = "クリックでキット選択画面を開く (次のスポーンから反映)"
+
+[kit.menu]
+title = "キット選択"
+description = "特殊アイテムを最大 {0} 個まで選べます。選択は次のスポーンから反映されます"
+confirm = "決定"
+close = "閉じる"
+too-many = "選べるのは {0} 個までです"
+saved = "キットを設定しました。次のスポーンから反映されます"
+not-participant = "チームに参加していません"
+
+[kit.shield]
+broken = "盾が壊れた！"
+parry = "パリィ！"
+stunned = "スタン！"

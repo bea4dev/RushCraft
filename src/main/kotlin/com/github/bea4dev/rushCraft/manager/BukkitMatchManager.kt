@@ -1,5 +1,6 @@
 package com.github.bea4dev.rushCraft.manager
 
+import io.papermc.paper.scoreboard.numbers.NumberFormat
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import org.bukkit.entity.Entity
@@ -10,7 +11,7 @@ import org.bukkit.scoreboard.Scoreboard
 import org.bukkit.scoreboard.Team
 
 class BukkitMatchManager(
-    private val scoreboard: Scoreboard,
+    val scoreboard: Scoreboard,
     title: Component = Component.text("Match", NamedTextColor.YELLOW),
     tabScoreTitle: Component = Component.text("Kills", NamedTextColor.RED),
 ) {
@@ -38,8 +39,13 @@ class BukkitMatchManager(
         "§${i.toString(16)}"
     }
 
+    // 変更のない行を毎回送り直さないためのキャッシュ
+    private val currentLines = arrayOfNulls<Component>(MAX_LINES)
+
     init {
         sidebarObjective.displaySlot = DisplaySlot.SIDEBAR
+        // 右側の数字は不要なので表示しない
+        sidebarObjective.numberFormat(NumberFormat.blank())
         tabObjective.displaySlot = DisplaySlot.PLAYER_LIST
 
         for (i in 0 until MAX_LINES) {
@@ -69,11 +75,20 @@ class BukkitMatchManager(
      * この色チームは:
      * - ネームタグ色つき
      * - 当たり判定なし
+     * - 同士討ちなし
      * - 同じチームの透明メンバーを見られる
      */
     fun setEntityColor(entity: Entity, color: NamedTextColor) {
         val team = getOrCreateColorTeam(color)
         team.addEntry(entity.scoreboardEntry())
+    }
+
+    fun clearEntityColor(entity: Entity) {
+        val entry = entity.scoreboardEntry()
+        val team = scoreboard.getEntryTeam(entry) ?: return
+        if (team.name.startsWith("c_")) {
+            team.removeEntry(entry)
+        }
     }
 
     /**
@@ -96,17 +111,13 @@ class BukkitMatchManager(
         val limited = lines.take(MAX_LINES)
 
         for (i in 0 until MAX_LINES) {
-            val entry = entries[i]
-            val team = scoreboard.getTeam("line_$i") ?: continue
-
             if (i < limited.size) {
-                team.prefix(limited[i])
-                team.suffix(Component.empty())
-                sidebarObjective.getScore(entry).score = MAX_LINES - i
-            } else {
+                set(i, limited[i])
+            } else if (currentLines[i] != null) {
+                val team = scoreboard.getTeam("line_$i") ?: continue
                 team.prefix(Component.empty())
-                team.suffix(Component.empty())
-                scoreboard.resetScores(entry)
+                scoreboard.resetScores(entries[i])
+                currentLines[i] = null
             }
         }
     }
@@ -120,13 +131,17 @@ class BukkitMatchManager(
         require(index in 0 until MAX_LINES) {
             "Scoreboard line index must be 0..${MAX_LINES - 1}"
         }
+        if (currentLines[index] == line) return
 
         val entry = entries[index]
         val team = scoreboard.getTeam("line_$index") ?: return
 
         team.prefix(line)
         team.suffix(Component.empty())
-        sidebarObjective.getScore(entry).score = MAX_LINES - index
+        if (currentLines[index] == null) {
+            sidebarObjective.getScore(entry).score = MAX_LINES - index
+        }
+        currentLines[index] = line
     }
 
     fun setTitle(title: Component) {
@@ -134,17 +149,14 @@ class BukkitMatchManager(
     }
 
     private fun getOrCreateColorTeam(color: NamedTextColor): Team {
-        val teamName = "c_${color.toString().lowercase()}".take(16)
+        val teamName = "c_${NamedTextColor.NAMES.key(color) ?: color.asHexString()}".take(16)
 
         return scoreboard.getTeam(teamName)
             ?: scoreboard.registerNewTeam(teamName).also { team ->
                 team.color(color)
 
-                // ネームタグ・Tab上の名前色を確実に色付きにしたい場合、
-                // color() だけではなく prefix() も設定しておくと扱いやすい。
-                team.prefix(Component.text("", color))
-
                 team.setCanSeeFriendlyInvisibles(true)
+                team.setAllowFriendlyFire(false)
 
                 team.setOption(
                     Team.Option.COLLISION_RULE,

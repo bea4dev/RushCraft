@@ -1,8 +1,275 @@
+# !tyml lang.tyml
+# NOTE: values are java.text.MessageFormat patterns. Write a single quote as two quotes.
 [match]
-start = "The match has started!"
+start = "          The match has started!"
+lobby = "Sending you to the lobby..."
+restart = "The server is restarting"
+spectating = "You are spectating."
+spectating-join = "[Join a team]"
+spectating-join-hover = "Click to open the team selector"
+
+[match.death]
+void = "{0} was knocked into the void by {1}"
 
 [match.waiting]
+need = "{0} more player(s) needed to start the game"
 countdown = "The match starts in {0} seconds"
 
 [match.finished]
 winner = "{0} wins!"
+draw = "Draw!"
+countdown = "Next game in {0} seconds"
+lobby = "Returning to the lobby in {0} seconds"
+
+[match.status]
+need = "Waiting for {0} more"
+starting = "Starting in {0}s"
+elapsed = "Time {0}"
+remaining = "Time left {0}"
+finished = "Match over"
+
+[match.build]
+denied = "You cannot build here"
+
+[match.room]
+denied = "You cannot enter here"
+
+[match.ctw]
+name = "Capture The Wool"
+touched = "{0} picked up {1}!"
+placed = "{0} placed {1}!"
+
+[match.ctw.monument]
+wrong = "Only {0} can place {1} here"
+protected = "Monuments cannot be broken"
+
+[match.ctw.wool]
+protected = "This wool is an objective of another team"
+
+[team]
+red = "Red Team"
+blue = "Blue Team"
+aqua = "Aqua Team"
+yellow = "Yellow Team"
+green = "Green Team"
+orange = "Orange Team"
+purple = "Purple Team"
+pink = "Pink Team"
+
+[command]
+usage = "Usage: {0}"
+player-only = "Only players can use this command"
+no-match = "No match is in progress"
+
+[command.join]
+joined = "You joined {0}"
+already = "You are already on {0}"
+closed = "You cannot join a team right now"
+full = "There is no team you can join"
+running = "You cannot change teams during the match"
+unbalanced = "That team already has more players"
+unknown = "Team \"{0}\" does not exist"
+
+[command.spectate]
+done = "You are now spectating. Use /join to join a team"
+already = "You are already spectating"
+
+[command.admin]
+started = "Countdown started"
+not-waiting = "The match is not waiting"
+ended = "The match was ended"
+not-running = "The match is not running"
+status = "Map: {0} / State: {1} / Players: {2}"
+
+[map.problem]
+no-teams = "There are no teams"
+no-spawns = "{0} has no spawns"
+duplicate-team = "Team id \"{0}\" is duplicated"
+duplicate-color = "Another team has the same color as {0}"
+single-team = "There is only one team (testing only)"
+
+[map.problem.ctw]
+no-wools = "No wools are configured"
+unknown-team = "Team \"{1}\" of {0} does not exist"
+no-monument = "{0} has no monument"
+duplicate-monument = "Monument ({0}) is duplicated"
+duplicate-wool = "{0} is duplicated for the same team"
+team-without-wool = "{0} has no wool"
+
+[setup]
+disabled = "Setup mode is disabled (set setup-mode = true in config.toml)"
+invalid-id = "Map id \"{0}\" is invalid (use a-z, 0-9, _ and -)"
+exists = "Map \"{0}\" already exists"
+created = "Created map \"{0}\""
+imported = "Imported world \"{0}\" as map \"{1}\""
+not-found = "Map \"{0}\" was not found"
+editing = "Editing {0}. Use the nether star for the menu and the blaze rod to select regions"
+saved = "Saved {0}"
+save-failed = "Failed to save. Check the console"
+problems = "{0} problem(s):"
+left-unsaved = "You have unsaved changes. They are kept in the edit world; resume with /rcmap edit and save"
+discarded = "Discarded unsaved changes of map \"{0}\""
+list = "Maps:"
+not-editing = "You are not editing a map (/rcmap edit <id>)"
+unknown-gamemode = "Gamemode \"{0}\" does not exist"
+
+[setup.import]
+not-found = "World folder \"{0}\" was not found"
+
+[setup.tool]
+menu = "Setup Menu"
+menu-lore = "Right click to open the menu"
+wand = "Selection Wand"
+wand-lore = "Left click: pos1 / Right click: pos2"
+
+[setup.wand]
+pos1 = "Pos1: {0}"
+pos2 = "Pos2: {0}"
+
+[setup.menu]
+close = "Close"
+back = "Back"
+save = "Save"
+invalid-number = "Invalid number"
+
+[setup.menu.main]
+title = "Map Setup: {0}"
+summary = "ID: {0} / Gamemode: {1} / Teams: {2}"
+unsaved = "There are unsaved changes"
+valid = "No problems"
+info = "Information"
+spawn = "Set spectator spawn here"
+spawn-tooltip = "Sets the waiting / spectator spawn to your position"
+teams = "Teams"
+wools = "Wools"
+regions = "No-build regions"
+kit = "Kit"
+save = "Save map"
+save-tooltip = "Writes the world and map.toml back to the template"
+leave = "Stop editing"
+leave-tooltip = "Leaves the edit world (does not save)"
+
+[setup.menu.spawn]
+set = "Spectator spawn set to {0}"
+
+[setup.menu.info]
+title = "Information"
+description = "Empty build height means unlimited. Time limit 0 means unlimited"
+name = "Name"
+version = "Version"
+authors = "Authors (comma separated)"
+time-limit = "Time limit (seconds)"
+max-height = "Max build height (Y)"
+time = "Time of day (0-24000)"
+lock-time = "Lock time of day"
+
+[setup.menu.teams]
+title = "Teams"
+description = "Select a team to edit. The number is the spawn count"
+tooltip = "Click to edit"
+add = "Add team"
+no-color = "No colors left"
+
+[setup.menu.team]
+title = "Team: {0}"
+spawns = "Spawns: {0}"
+id = "ID"
+color = "Color"
+name = "Display name (empty: color name)"
+max-players = "Max players (0: unlimited)"
+invalid-id = "ID \"{0}\" is invalid or already used"
+add-spawn = "Add spawn here"
+add-spawn-tooltip = "Adds your position and facing as a spawn"
+spawn-added = "Added a spawn to {0} ({1})"
+remove-spawn = "Remove nearest spawn"
+remove-spawn-tooltip = "Removes the spawn closest to you"
+teleport = "Teleport to spawn"
+delete = "Delete team"
+spawn-rooms = "Spawn rooms: {0}"
+add-room = "Add selection as spawn room"
+add-room-tooltip = "Other teams cannot enter spawn rooms and nobody can build in them"
+clear-rooms = "Clear spawn rooms"
+
+[setup.menu.wools]
+title = "Wools"
+description = "Wools that teams have to capture and place"
+add = "Add wool"
+no-team = "Create a team first"
+monument = "Monument: {0}"
+no-monument = "No monument"
+
+[setup.menu.wool]
+title = "Wool: {0}"
+description = "The team wins this objective by placing this wool at the monument"
+team = "Capturing team"
+color = "Wool color"
+monument-adjacent = "Monument: next to looked face"
+monument-adjacent-tooltip = "Uses the position next to the face you are looking at (where a block would be placed)"
+monument-target = "Monument: looked block"
+monument-target-tooltip = "Uses the block you are looking at"
+monument-set = "Monument set to {0}"
+no-target = "You are not looking at a block"
+teleport = "Teleport to monument"
+delete = "Delete wool"
+room = "Wool room: {0}"
+spawners = "Wool spawners: {0}"
+set-room = "Set selection as wool room"
+set-room-tooltip = "Only the capturing team can enter the wool room"
+clear-room = "Remove wool room"
+add-spawner = "Add selection as wool spawner"
+add-spawner-tooltip = "Wool of this color in the region is not broken; the player receives a wool instead"
+clear-spawners = "Clear wool spawners"
+
+[setup.menu.regions]
+title = "No-build regions"
+description = "Blocks in these regions cannot be changed during the match. Select a region with the blaze rod"
+selection = "Selection: {0} - {1}"
+add = "Add selection"
+no-selection = "No region selected"
+wand = "Get the wand"
+delete = "Delete region #{0}"
+
+[setup.menu.kit]
+title = "Kit"
+description = "Items given on match start and respawn"
+count = "Items: {0}"
+colored-armor = "Dye leather armor in team color"
+copy = "Set from inventory"
+copy-tooltip = "Uses your current inventory (including armor and offhand) as the kit"
+copied = "Kit set ({0} items)"
+give = "Receive kit"
+
+[team-menu]
+title = "Select Team"
+description = "Map: {0} / Gamemode: {1}\nChoose a team to join"
+auto = "Auto"
+spectate = "Spectate"
+close = "Close"
+
+[kit.special]
+classic_sword = "Classic Iron Sword"
+classic_sword-description = "An iron sword without attack cooldown"
+classic_bow = "Classic Bow"
+classic_bow-description = "A bow with Power I (comes with 32 arrows)"
+shield = "Shield"
+shield-description = "Guarding wears it down and it breaks in about 5 seconds. Right after lowering it you can parry: melee attackers are knocked away and stunned, and arrows are reflected. A successful parry fully repairs it"
+
+[kit.ui]
+team-selector = "Select Team"
+team-selector-lore = "Click to open the team selector"
+kit-selector = "Select Kit"
+kit-selector-lore = "Click to open the kit selector (applied on next spawn)"
+
+[kit.menu]
+title = "Select Kit"
+description = "Choose up to {0} special items. Your choice is applied on your next spawn"
+confirm = "Confirm"
+close = "Close"
+too-many = "You can choose up to {0} items"
+saved = "Kit saved. It will be applied on your next spawn"
+not-participant = "You are not on a team"
+
+[kit.shield]
+broken = "Your shield broke!"
+parry = "Parry!"
+stunned = "Stunned!"

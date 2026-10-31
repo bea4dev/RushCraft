@@ -1,0 +1,49 @@
+# RushCraft 設定ファイル
+
+# true にするとマップ編集用のセットアップモードで起動する。
+# 試合・ローテーション・再起動は行われず、/rcmap でマップを作成・編集できる。
+setup-mode = false
+
+[match]
+# 試合開始に必要な最低人数 (チームに参加している人数)
+min-players = 2
+# 必要人数が揃ってから試合開始までの秒数
+waiting-seconds = 30
+# 試合終了から次の試合 (またはロビー転送) までの秒数
+finished-seconds = 10
+# true なら前の試合の参加者を次の試合でもチームに入れたままにする (人数は自動で振り分け)
+# false なら試合ごとに全員がチーム選択画面から参加し直す
+keep-participants = true
+
+[kit]
+# 全マップ共通の特殊アイテムを同時にいくつまで選べるか
+max-special-items = 3
+# 特殊アイテムを死亡時にドロップするか (マップ固有のキットは map.toml の [kit] drop-on-death)
+special-drop-on-death = false
+# 試合中にキット選択アイテムを置くインベントリのスロット (9-35 がインベントリ、0-8 がホットバー)
+selector-slot = 17
+
+[rotation]
+# 再起動までに行う試合数
+count = 5
+# 使用するマップ ID の一覧。空の場合は読み込めた全マップを使う
+maps = []
+# true ならマップの順番をシャッフルする
+shuffle = true
+
+[lobby]
+# ローテーション終了時にプレイヤーを送る方法
+#   "proxy"    : BungeeCord / Velocity のサーバー名で転送 (server を使用)
+#   "transfer" : Transfer パケットで転送 (host / port を使用。転送先で accepts-transfers=true が必要)
+#   "none"     : 転送しない
+mode = "proxy"
+server = "lobby"
+host = "127.0.0.1"
+port = 25565
+
+[restart]
+# "restart"  : spigot.yml の restart-script で再起動
+# "shutdown" : 停止のみ (外部のプロセスマネージャーで再起動する場合)
+method = "restart"
+# ロビー転送からサーバー再起動までの秒数
+delay-seconds = 5
