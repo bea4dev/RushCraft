@@ -33,6 +33,8 @@ import org.bukkit.Bukkit
 import org.bukkit.GameMode
 import org.bukkit.World
 import org.bukkit.attribute.Attribute
+import org.bukkit.damage.DamageSource
+import org.bukkit.damage.DamageType
 import org.bukkit.entity.Player
 import java.io.ByteArrayOutputStream
 import java.io.DataOutputStream
@@ -267,6 +269,8 @@ object MatchManager : Tickable {
         for (player in Bukkit.getOnlinePlayers()) {
             if (match.getTeam(player) == null && !TutorialManager.isInTutorial(player)) {
                 makeSpectator(player)
+                // チームを選び忘れた人のために、もう一度参加画面を出す
+                openTeamMenuLater(player)
             }
         }
     }
@@ -426,6 +430,26 @@ object MatchManager : Tickable {
                         .clickEvent(ClickEvent.runCommand("/tutorial"))
                 )
         )
+    }
+
+    // ------------------------------------------------------------------
+    // 観戦者
+    // ------------------------------------------------------------------
+
+    /** 試合中にチームに入らず観戦している (チュートリアル中は除く) */
+    private fun isWatching(player: Player): Boolean {
+        val match = match ?: return false
+        return state is MatchState.Running && match.getTeam(player) == null &&
+            player.gameMode == GameMode.SPECTATOR && !TutorialManager.isInTutorial(player)
+    }
+
+    /** 観戦者に参加の仕方をアクションバーで出し続ける (観戦モードではアイテムを使えず、チャットのリンクは流れてしまうため) */
+    private fun showSpectatorHints() {
+        for (player in Bukkit.getOnlinePlayers()) {
+            if (isWatching(player)) {
+                player.sendActionBar(Component.translatable("rushcraft.match.spectating-hint", NamedTextColor.GRAY))
+            }
+        }
     }
 
     // ------------------------------------------------------------------
@@ -628,6 +652,7 @@ object MatchManager : Tickable {
             if (!match.isAlive()) {
                 finishMatch()
             }
+            killInVoid(match.world)
         }
 
         if (t % 20 == 0) {
@@ -636,7 +661,19 @@ object MatchManager : Tickable {
         if (t % 10 == 0) {
             updateScoreboard()
         }
+        if (t % 20 == 0) {
+            showSpectatorHints()
+        }
         t++
+    }
+
+    /** 奈落 (ワールドの下端より下) に落ちたら、じわじわ削れるのを待たずに即死させる */
+    private fun killInVoid(world: World) {
+        for (player in world.players) {
+            if (player.isDead || player.location.y >= world.minHeight) continue
+            if (player.gameMode != GameMode.SURVIVAL && player.gameMode != GameMode.ADVENTURE) continue
+            player.damage(Float.MAX_VALUE.toDouble(), DamageSource.builder(DamageType.OUT_OF_WORLD).build())
+        }
     }
 
     override fun isAlive(): Boolean {

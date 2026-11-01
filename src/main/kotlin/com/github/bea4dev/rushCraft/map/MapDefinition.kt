@@ -1,5 +1,6 @@
 package com.github.bea4dev.rushCraft.map
 
+import com.github.bea4dev.rushCraft.kit.KitManager
 import com.github.bea4dev.rushCraft.match.MatchGameModeType
 import com.github.bea4dev.rushCraft.match.MatchGameModeTypes
 import com.github.bea4dev.rushCraft.match.ModeSettings
@@ -100,6 +101,14 @@ class MapDefinition(
             if (material == null || !Tag.PRESSURE_PLATES.isTagged(material)) {
                 problems += MapProblem.error("rushcraft.map.problem.invalid-trap-plate", Component.text(plate))
             }
+        }
+        // 特殊アイテムと合わせてホットバーに入り切るか (特殊アイテムは 1 つにつき 1 枠使うとして数える)
+        val hotbarItems = kit.items.count { it.slot in 0..8 }
+        val specials = KitManager.config.maxSpecialItems
+        if (hotbarItems + specials > 9) {
+            problems += MapProblem.warning(
+                "rushcraft.map.problem.hotbar-overflow", Component.text(hotbarItems), Component.text(specials)
+            )
         }
         problems += settings.validate(this)
         return problems

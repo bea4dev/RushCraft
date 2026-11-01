@@ -303,7 +303,7 @@ object ShieldManager : Tickable {
         parried(victim, projectile = false)
         if (attacker is Player) {
             // ふっとばして奈落に落とした場合もキルになるようにする
-            CombatTracker.record(attacker, victim)
+            CombatTracker.record(attacker, victim, shieldHand(victim)?.let(victim.inventory::getItem))
         }
         stun(attacker, victim.location)
     }
@@ -339,6 +339,8 @@ object ShieldManager : Tickable {
             Swapper.onReflect(arrow, player)
         } else {
             arrow.shooter = player
+            // キルログには弾き返した盾を出す
+            shieldHand(player)?.let { arrow.setWeapon(player.inventory.getItem(it)) }
         }
     }
 

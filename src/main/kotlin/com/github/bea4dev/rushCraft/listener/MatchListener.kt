@@ -6,6 +6,7 @@ import com.github.bea4dev.rushCraft.match.CombatTracker
 import net.kyori.adventure.sound.Sound
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
+import net.kyori.adventure.text.format.TextDecoration
 import org.bukkit.Bukkit
 import org.bukkit.Location
 import org.bukkit.World
@@ -39,6 +40,7 @@ import org.bukkit.event.player.PlayerMoveEvent
 import org.bukkit.event.player.PlayerQuitEvent
 import org.bukkit.event.player.PlayerRespawnEvent
 import org.bukkit.event.player.PlayerTeleportEvent
+import org.bukkit.inventory.ItemStack
 
 /**
  * 試合全体に関わるイベント (参加・退出・リスポーン・ワールド保護)。
@@ -86,58 +88,71 @@ class MatchListener : Listener {
         val match = MatchManager.match ?: return
         val victim = event.player
         val special = CombatTracker.takeSpecialDeath(victim)
-        val lastAttacker = CombatTracker.lastAttacker(victim)
+        val lastHit = CombatTracker.lastHit(victim)
         CombatTracker.clear(victim)
         if (!MatchManager.isRunning(victim.world)) return
 
         // 奈落に突き落とした場合は、バニラのキル判定 (5 秒) が切れていても最後に攻撃したプレイヤーのキルにする
         val isVoid = victim.lastDamageCause?.cause == EntityDamageEvent.DamageCause.VOID
-        val knocker = if (isVoid && special == null) {
-            victim.killer ?: lastAttacker?.takeIf { it.world == victim.world && match.getTeam(it) != null }
-        } else {
-            null
-        }
+        val hit = lastHit?.takeIf { it.attacker.world == victim.world && match.getTeam(it.attacker) != null }
+        val knocker = if (isVoid && special == null) victim.killer ?: hit?.attacker else null
 
         val specialKiller = special?.killer?.let(Bukkit::getPlayer)
-        if (special != null) {
-            // 投げナイフ・TNT などの即死
-            event.deathMessage(
-                Component.translatable(
-                    special.messageKey,
-                    victim.displayName(),
-                    specialKiller?.displayName() ?: Component.text("?"),
-                )
-            )
-        } else if (knocker != null) {
-            event.deathMessage(
-                Component.translatable("rushcraft.match.death.void", victim.displayName(), knocker.displayName())
-            )
-        } else {
-            // バニラの死亡メッセージはメインスコアボードのチームで名前を装飾するため、
-            // 試合用スコアボードのチーム色が付かない。表示名に置き換える。
-            event.deathMessage()?.let { message ->
-                var colored = message
-                for (player in listOfNotNull(victim, victim.killer).distinct()) {
-                    val name = player.displayName()
-                    colored = colored.replaceText { it.matchLiteral(player.name).once().replacement(name) }
-                }
-                event.deathMessage(colored)
-            }
-        }
+        // 特殊アイテムでの死亡は記録した人だけのキルにする (TNT の自爆を、直前に攻撃した人のキルにしない)
+        val killer = if (special != null) specialKiller else victim.killer ?: knocker
+        // 倒した人の武器 (最後に攻撃してきたのが同じ人ならそのときの武器)
+        val weapon = killer?.let { if (hit?.attacker == it) hit.weapon else CombatTracker.weaponOf(it) }
 
-        val killer = specialKiller ?: victim.killer ?: knocker ?: return
-        if (killer == victim || match.getTeam(killer) == null) return
+        // キルログはどれも「倒された人 → 倒した人 → 武器」の順に並べる
+        val message = when {
+            // 投げナイフ・TNT などの即死
+            special != null -> Component.translatable(
+                special.messageKey,
+                victim.displayName(),
+                specialKiller?.displayName() ?: Component.text("?"),
+            )
+
+            knocker != null -> Component.translatable(
+                "rushcraft.match.death.void", victim.displayName(), knocker.displayName(), weaponName(weapon)
+            )
+
+            killer != null -> Component.translatable(
+                "rushcraft.match.death.kill", victim.displayName(), killer.displayName(), weaponName(weapon)
+            )
+
+            // 自滅など。バニラの死亡メッセージはメインスコアボードのチームで名前を装飾するため、
+            // 試合用スコアボードのチーム色が付かない。表示名に置き換える。
+            else -> event.deathMessage()?.replaceText { it.matchLiteral(victim.name).once().replacement(victim.displayName()) }
+        }
+        event.deathMessage(null)
+        if (message != null) broadcastDeath(message, listOfNotNull(victim, killer))
+
+        if (killer == null || killer == victim || match.getTeam(killer) == null) return
         val kills = match.addKill(killer)
         MatchManager.bukkit?.setTabScore(killer, kills)
         // 倒した本人にだけ経験値の音を鳴らす
         killer.playSound(KILL_SOUND, Sound.Emitter.self())
     }
 
+    private fun weaponName(weapon: ItemStack?): Component {
+        return weapon?.displayName() ?: Component.translatable("rushcraft.match.death.fist")
+    }
+
+    /** キルログを流す。倒された人・倒した人には太字で出す */
+    private fun broadcastDeath(message: Component, involved: List<Player>) {
+        val bold = message.decorate(TextDecoration.BOLD)
+        for (player in Bukkit.getOnlinePlayers()) {
+            player.sendMessage(if (player in involved) bold else message)
+        }
+        Bukkit.getConsoleSender().sendMessage(message)
+    }
+
     /** 敵からの攻撃を記録しておく (奈落に突き落とした判定用) */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     fun onCombat(event: EntityDamageByEntityEvent) {
         val victim = event.entity as? Player ?: return
-        val attacker = when (val damager = event.damager) {
+        val damager = event.damager
+        val attacker = when (damager) {
             is Player -> damager
             is Projectile -> damager.shooter as? Player
             else -> null
@@ -146,7 +161,7 @@ class MatchListener : Listener {
         if (!MatchManager.isRunning(victim.world)) return
         val team = match.getTeam(attacker) ?: return
         if (match.getTeam(victim) == team) return
-        CombatTracker.record(victim, attacker)
+        CombatTracker.record(victim, attacker, CombatTracker.weaponOf(damager))
     }
 
     // ------------------------------------------------------------------

@@ -67,7 +67,7 @@ object SpearManager : Tickable {
             inventory.setItemInMainHand(stack)
             return
         }
-        inventory.setItemInMainHand(null)
+        ItemRecharge.useUp(player, SpecialItem.SPEAR)
         player.world.playSound(
             Sound.sound(org.bukkit.Sound.ENTITY_ITEM_BREAK, Sound.Source.PLAYER, 1f, 1f),
             player.x, player.y, player.z,

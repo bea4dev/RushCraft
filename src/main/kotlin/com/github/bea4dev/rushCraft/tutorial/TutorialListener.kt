@@ -141,6 +141,8 @@ class TutorialListener : Listener {
         val source = event.damageSource
         val killer = special?.killer ?: source.causingEntity?.uniqueId
         val cause = when {
+            // 投げ返した TNT で着火した本人が爆死した (自爆なので誰のキルにもならない)
+            special?.messageKey == "rushcraft.match.death.tnt-self" -> "tnt-self"
             killer != session.player.uniqueId -> "other"
             special != null -> special.messageKey.substringAfterLast('.')
             else -> causeOf(source.damageType)

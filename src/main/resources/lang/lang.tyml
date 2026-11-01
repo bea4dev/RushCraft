@@ -5,8 +5,11 @@ match: {
     spectating: string,
     spectating-join: string,
     spectating-join-hover: string,
+    spectating-hint: string,
     death: {
         void: string,
+        kill: string,
+        fist: string,
         knife: string,
         tnt: string,
         tnt-self: string,
@@ -90,6 +93,7 @@ map: {
         duplicate-color: string,
         single-team: string,
         invalid-trap-plate: string,
+        hotbar-overflow: string,
         ctw: {
             no-wools: string,
             unknown-team: string,
@@ -254,6 +258,7 @@ team-menu: {
 },
 kit: {
     recharged: string,
+    recharging: string,
     special: {
         classic_sword: string,
         classic_sword-description: string,

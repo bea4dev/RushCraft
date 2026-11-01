@@ -163,7 +163,8 @@ class TntTutorial(session: TutorialSession) : ItemTutorial(session, SpecialItem.
             session.say(key("practice2"))
             session.say(key("practice2-hint"))
             session.objective(key("practice2"), 0, 1)
-            while (session.count("kill.tnt") < 1) {
+            // 着火した敵が自分の TNT で爆死すれば成功 (自爆扱いなのでキルにはならない)
+            while (session.count("kill.tnt-self") < 1) {
                 val enemy = session.spawnEnemy(facingPlayer(0.5, 1.5), health = 20.0)
                 enemy.brain = Brains.watch(player)
                 wait(30)

@@ -6,7 +6,11 @@ import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import org.bukkit.Bukkit
 import org.bukkit.Location
+import org.bukkit.damage.DamageSource
+import org.bukkit.damage.DamageType
+import org.bukkit.entity.LivingEntity
 import org.bukkit.entity.Player
+import org.bukkit.event.entity.EntityDamageByEntityEvent
 import org.bukkit.util.Vector
 import java.util.UUID
 
@@ -16,9 +20,12 @@ import java.util.UUID
  *
  * 7 ブロック以上飛び上がった場合、落ち始めて少しすると下向きに加速し、動きに緩急を付ける。
  * 落下ダメージは普通に受ける (外したときのリスク)。
+ *
+ * 叩きつけ (落下中の攻撃) はバニラの 2 倍のダメージで、当てた敵の周り 3 ブロックの敵にも同じダメージを与える。
+ * 通常攻撃はバニラのまま。
  */
 object MaceManager : Tickable {
-    private const val CHARGE_TICKS = 25
+    private const val CHARGE_TICKS = 20
     private const val LEAP_FORWARD = 1.1
     private const val LEAP_UPWARD = 1.35
 
@@ -33,6 +40,15 @@ object MaceManager : Tickable {
     private const val MAX_LEAP_TICKS = 100
 
     private const val BAR_LENGTH = 10
+
+    /** 叩きつけのダメージの倍率 */
+    private const val SMASH_DAMAGE_MULTIPLIER = 2.0
+
+    /** 叩きつけに巻き込む範囲 (当てた敵からの距離) */
+    private const val SMASH_RADIUS = 3.0
+
+    /** 巻き込みのダメージを与えている最中 (そのダメージでさらに巻き込まないように) */
+    private var splashing = false
 
     private class Leap(var previous: Location) {
         val startY = previous.y
@@ -144,6 +160,33 @@ object MaceManager : Tickable {
                 Sound.sound(org.bukkit.Sound.ENTITY_BREEZE_WIND_BURST, Sound.Source.PLAYER, 1f, 0.8f),
                 player.x, player.y, player.z,
             )
+        }
+    }
+
+    /** 特殊アイテムのメイスでの叩きつけか (巻き込みのダメージは除く) */
+    fun isSmash(event: EntityDamageByEntityEvent): Boolean {
+        if (splashing || event.damageSource.damageType != DamageType.MACE_SMASH) return false
+        val attacker = event.damager as? LivingEntity ?: return false
+        return KitManager.specialOf(attacker.equipment?.itemInMainHand) == SpecialItem.MACE
+    }
+
+    /** 叩きつけのダメージを上げる */
+    fun boostSmash(event: EntityDamageByEntityEvent) {
+        event.damage *= SMASH_DAMAGE_MULTIPLIER
+    }
+
+    /** 叩きつけが当たった。周りの敵にも同じダメージを与える */
+    fun splashSmash(attacker: LivingEntity, victim: LivingEntity, damage: Double) {
+        val center = victim.location
+        val source = DamageSource.builder(DamageType.MACE_SMASH).withCausingEntity(attacker).withDirectEntity(attacker).build()
+        val targets = center.world.getNearbyEntitiesByType(LivingEntity::class.java, center, SMASH_RADIUS)
+            .filter { it != victim && it != attacker && it.location.distance(center) <= SMASH_RADIUS }
+            .filter { Combatants.isTarget(it) && Combatants.isEnemy(attacker, it) }
+        splashing = true
+        try {
+            targets.forEach { it.damage(damage, source) }
+        } finally {
+            splashing = false
         }
     }
 

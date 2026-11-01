@@ -9,13 +9,16 @@ spectating-join = "[Join the match]"
 spectating-join-hover = "Click to join the match"
 spectating-tutorial = "[Tutorial]"
 spectating-tutorial-hover = "Click to take a tutorial"
+spectating-hint = "Spectating — type /join to join the match"
 
 [match.death]
-void = "{0} was knocked into the void by {1}"
-knife = "{0} was taken down by {1}''s throwing knife"
-tnt = "{0} was blown up by {1}''s TNT"
+void = "{0} was knocked into the void by {1} using {2}"
+kill = "{0} was slain by {1} using {2}"
+fist = "bare hands"
+knife = "{0} was taken down by {1} using a throwing knife"
+tnt = "{0} was blown up by {1} using TNT"
 tnt-self = "{0} was blown up by their own TNT"
-trap = "{0} stepped on {1}''s trap"
+trap = "{0} was blown up by {1} using a trap"
 
 [match.waiting]
 need = "{0} more player(s) needed to start the game"
@@ -91,6 +94,7 @@ duplicate-team = "Team id \"{0}\" is duplicated"
 duplicate-color = "Another team has the same color as {0}"
 single-team = "There is only one team (testing only)"
 invalid-trap-plate = "Trap plate \"{0}\" is not a pressure plate"
+hotbar-overflow = "The kit has {0} hotbar items, which won''t fit in the hotbar together with {1} special items"
 
 [map.problem.ctw]
 no-wools = "No wools are configured"
@@ -254,6 +258,7 @@ tutorial-tooltip = "Learn CTW and the special items hands-on"
 
 [kit]
 recharged = "Your {0} is back!"
+recharging = "{0} (recharging)"
 
 [kit.special]
 classic_sword = "Classic Iron Sword"
@@ -267,15 +272,15 @@ swapper-description = "Throw it to damage an enemy and swap places with them. It
 throwing_knife = "Throwing Knife"
 throwing_knife-description = "Right-click to throw. Takes down an enemy in one hit. Comes back 30 seconds after throwing"
 tnt = "Sticky TNT"
-tnt-description = "Click (left or right) to light it and hold it up, then click again to throw. The TNT sticks to a nearby enemy and, when it explodes, takes down the holder and enemies within 2.5 blocks. The enemy can throw it back while there is time left. If it hits no one, it comes back to you before exploding (the fuse time is random). Comes back 15 seconds after exploding"
+tnt-description = "Click (left or right) to light it and hold it up, then click again to throw. The TNT sticks to a nearby enemy and, when it explodes, takes down the holder and enemies within 2.5 blocks. The enemy can throw it back while there is time left. If it hits no one, it comes back to you before exploding (the fuse time is random). Enemies it takes down always count as kills for whoever lit it, no matter who threw it last, and if it catches the one who lit it, it counts as a self-kill. TNT thrown back by an enemy also catches the lighter''s teammates, and those count as kills for the enemy who threw it back. Comes back 15 seconds after exploding"
 instant_wall = "Instant Wall"
 instant_wall-description = "Right-click a block to raise a 5-wide, 3-high glass wall across your view. Players where the wall rises are launched upward. Comes back 15 seconds after use"
 mace = "Mace"
-mace-description = "Sneak while holding it to charge, then stop sneaking once charged to leap forward and high into the air. Watch out for fall damage"
+mace-description = "Sneak while holding it to charge, then stop sneaking once charged to leap forward and high into the air. Smashing down while falling deals heavy damage and hits enemies within 3 blocks of the target for the same damage. Watch out for fall damage"
 spear = "Spear"
 spear-description = "An iron spear with Lunge II. Attacking lunges you forward, and for 0.8 seconds afterwards enemies around you are hit too. Breaks after 3 uses and comes back after 20 seconds"
 trap = "Trap"
-trap-description = "A pressure plate that explodes when an enemy steps on it, taking down enemies within 2.5 blocks. Nothing happens when you or your teammates step on it. You get 10 per spawn and can have up to 10 placed; placing an 11th sets off your oldest one. A broken trap drops nothing"
+trap-description = "A pressure plate that explodes when an enemy steps on it, taking down enemies within 2.5 blocks. Nothing happens when you or your teammates step on it. You get 5 per spawn and can have up to 5 placed; placing a 6th sets off your oldest one. A broken trap drops nothing"
 
 [kit.ui]
 team-selector = "Join the Match"
@@ -498,7 +503,7 @@ demo-label = "Stick it!"
 practice1 = "Stick the TNT on the enemies"
 practice1-hint = "If you miss, it comes back. Throw it again before it explodes"
 practice2 = "Throw back the TNT stuck on you"
-practice2-hint = "Even when TNT is stuck on you, click before it explodes to throw it back. Aim at the enemy!"
+practice2-hint = "Even when TNT is stuck on you, click before it explodes to throw it back. Throw it back at the enemy who lit it to make them blow themselves up!"
 
 [tutorial.wall]
 subtitle = "Raise a wall in an instant"
@@ -520,7 +525,7 @@ demo-label = "Smash!"
 practice1 = "Leap onto the high platform"
 practice1-hint = "Sneak until the gauge fills, face the platform, then stop sneaking"
 practice2 = "Hit an enemy while falling from a height"
-practice2-hint = "Attacking with the mace while falling deals huge damage (and a hit cancels your fall damage). Jump off the platform onto an enemy"
+practice2-hint = "Attacking with the mace while falling deals huge damage (and a hit cancels your fall damage). It also hits enemies within 3 blocks. Jump off the platform onto an enemy"
 
 [tutorial.spear]
 subtitle = "Lunge and strike"
@@ -536,7 +541,7 @@ practice2-hint = "You keep hitting nearby enemies for a moment after lunging. Lu
 [tutorial.trap]
 subtitle = "Step on it, it explodes"
 intro1 = "When an enemy steps on your pressure plate, it explodes and defeats enemies within 2.5 blocks"
-intro2 = "Nothing happens when you or a teammate step on it. You can have 10 at a time, and placing an 11th sets off your oldest one"
+intro2 = "Nothing happens when you or a teammate step on it. You can have 5 at a time, and placing a 6th sets off your oldest one"
 demo = "Demo: set one on the enemy''s path"
 demo-path-label = "Enemy path"
 practice1 = "Set traps on the enemy''s path"

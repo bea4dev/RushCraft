@@ -298,6 +298,13 @@ class TrapTutorial(session: TutorialSession) : ItemTutorial(session, SpecialItem
         TrapManager.clearArea(arena.world, arena.bounds)
     }
 
+    /** 置き切ったら配り直す (5 個しか持てないので) */
+    private fun refillTraps() {
+        session.everyTick {
+            if (!player.inventory.contains(plate)) session.special(special).forEach { (slot, stack) -> player.inventory.setItem(slot, stack) }
+        }
+    }
+
     override fun steps(): List<TutorialStep> = listOf(
         introStep("intro1", "intro2"),
         demoStep("demo", "demo") {
@@ -322,6 +329,7 @@ class TrapTutorial(session: TutorialSession) : ItemTutorial(session, SpecialItem
         },
         practiceStep("practice1", "practice1", "kill.trap", 2) {
             clearTraps()
+            refillTraps()
             session.say(key("practice1-hint"))
             keepEnemy(at(-8.5, pathZ + 0.5, yaw = -90f), health = 20.0, delay = 40) {
                 it.brain = Brains.patrol(patrolPoints(), speed = 0.12)

@@ -42,6 +42,8 @@ class RushCraft : JavaPlugin() {
         val config = PluginConfig.load(this)
         Translations.register(this)
         MapRegistry.load(this)
+        // マップの確認 (セットアップでも使う) で設定を参照する
+        KitManager.initialize(config.kit)
         Commands.register(this)
 
         val pluginManager = Bukkit.getPluginManager()
@@ -51,7 +53,6 @@ class RushCraft : JavaPlugin() {
             SetupManager.start()
         } else {
             server.messenger.registerOutgoingPluginChannel(this, BUNGEE_CHANNEL)
-            KitManager.initialize(config.kit)
             pluginManager.registerEvents(MatchListener(), this)
             pluginManager.registerEvents(KitListener(), this)
             pluginManager.registerEvents(SpecialItemListener(), this)

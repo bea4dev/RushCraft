@@ -123,7 +123,6 @@ class KitDefinition(
                     KitItem(2, "minecraft:iron_pickaxe", 1),
                     KitItem(3, "minecraft:iron_axe", 1),
                     KitItem(4, "minecraft:oak_planks", 64),
-                    KitItem(5, "minecraft:oak_planks", 64),
                     KitItem(6, "minecraft:glass", 32),
                     KitItem(7, "minecraft:golden_apple", 1),
                     KitItem(8, "minecraft:cooked_beef", 32),

@@ -31,10 +31,10 @@ import kotlin.random.Random
  *
  * - 爆発までの時間はランダム。TNT の位置から鳴る音がだんだん速く・高くなって爆発する
  * - 投げた TNT は近くの敵に強制的に持たせる。持っている人は爆発で即死し、周り 2.5 ブロック以内も即死
- *   (投げた人のチームの味方は巻き込まない)
- * - 着火してから一度も投げていない間は、着火した人の味方も巻き込まない
- *   (スワッパーで敵に渡して味方を巻き込ませるような、わざと味方を巻き込む行為の対策)
- * - 持たされた人も、時間内ならクリックで投げ返せる。投げた人がその TNT の新しい持ち主になる
+ * - 爆発で倒れた人は、着火した人の敵なら必ず着火した人のキルになる (着火した人本人が倒れたら自爆)
+ * - 着火した人の味方は、最後に投げたのが着火した人の敵 (投げ返された) のときだけ巻き込み、
+ *   その場合は最後に投げた人のキルになる
+ * - 持たされた人も、時間内ならクリックで投げ返せる。投げた人がその TNT の新しい持ち主 (戻る先) になる
  * - スワッパーで位置を入れ替えると、持っている TNT も入れ替わり、所有者も入れ替わる
  * - 飛んでいる TNT はパリィで弾き返せる (弾き返した人が新しい持ち主になる)
  * - 誰にも当たらなければ、持ち主 (最後に投げた人) の元へ飛んで戻ってくる (奈落に落ちても戻ってくる)。
@@ -89,11 +89,13 @@ object TntManager : Tickable {
     private enum class State { HELD, FLYING, RETURNING, RESTING }
 
     /**
-     * @param origin 着火した人 (爆発すると、この人の TNT が時間で復活する)
+     * @param igniter 着火した人。爆発で倒れた人は、この人のキル (本人なら自爆) になる
+     * @param origin 着火した人 (爆発すると、この人の TNT が時間で復活する。倒れた・抜けたら null)
      * @param originSide 着火した人の陣営 (Combatants.sideOf)
-     * @param owner 持ち主 (最後に投げた人)。外れたときに戻る先で、キルもこの人のものになる
+     * @param owner 持ち主 (最後に投げた人)。外れたときに戻る先
      */
     private class Tnt(
+        val igniter: UUID,
         var origin: UUID?,
         val originSide: Any?,
         var owner: UUID,
@@ -116,9 +118,6 @@ object TntManager : Tickable {
 
         /** 持ち主が死んだ・抜けた (もう戻らない) */
         var orphan = false
-
-        /** 一度でも投げられたか */
-        var thrown = false
 
         fun owner(): LivingEntity? = if (orphan) null else (Bukkit.getEntity(owner) as? LivingEntity)?.takeIf { Combatants.isTarget(it) }
 
@@ -150,8 +149,7 @@ object TntManager : Tickable {
         if (isActive(player) || isHolding(player)) return
         val stack = player.inventory.itemInMainHand
         if (KitManager.specialOf(stack) != SpecialItem.TNT) return
-        stack.amount--
-        player.inventory.setItemInMainHand(stack)
+        ItemRecharge.useUp(player, SpecialItem.TNT)
 
         spawnHeld(player)
         player.sendActionBar(Component.translatable("rushcraft.kit.tnt.ignited", NamedTextColor.RED))
@@ -183,7 +181,7 @@ object TntManager : Tickable {
         val position = holdPosition(holder)
         val display = spawnDisplay(position)
         val totalFuse = fuse ?: Random.nextInt(MIN_FUSE_TICKS, MAX_FUSE_TICKS + 1)
-        tnts += Tnt(holder.uniqueId, Combatants.sideOf(holder), holder.uniqueId, Combatants.colorOf(holder), display, position, totalFuse)
+        tnts += Tnt(holder.uniqueId, holder.uniqueId, Combatants.sideOf(holder), holder.uniqueId, Combatants.colorOf(holder), display, position, totalFuse)
         playSound(position, org.bukkit.Sound.ENTITY_TNT_PRIMED, 1f, 1f)
     }
 
@@ -216,7 +214,6 @@ object TntManager : Tickable {
         tnt.owner = player.uniqueId
         tnt.color = Combatants.colorOf(player)
         tnt.orphan = false
-        tnt.thrown = true
         tnt.state = State.FLYING
         tnt.stateTicks = 0
         tnt.landedTicks = -1
@@ -280,6 +277,17 @@ object TntManager : Tickable {
             drop(tnt)
             return
         }
+        if (!isHarmed(tnt, holder)) {
+            // 爆発で倒れない人 (着火した人の味方で、最後に投げたのも味方) が持ったまま敵に突っ込めないようにする
+            // (スワッパーやパリィで渡った場合)。着火した人の元へ飛んで戻らせる
+            tnt.owner = tnt.igniter
+            tnt.orphan = false
+            val igniter = tnt.owner()
+            tnt.orphan = igniter == null
+            tnt.color = igniter?.let(Combatants::colorOf) ?: tnt.color
+            drop(tnt)
+            return
+        }
         tnt.position = holdPosition(holder)
         if (holder.uniqueId != tnt.owner && tnt.stateTicks % 20 == 1) {
             holder.sendActionBar(Component.translatable("rushcraft.kit.tnt.caught", NamedTextColor.RED))
@@ -315,7 +323,7 @@ object TntManager : Tickable {
         // 近くの敵に持たせる
         val catcher = world.getNearbyEntitiesByType(LivingEntity::class.java, tnt.position, CATCH_RADIUS)
             .filter { it.uniqueId != tnt.owner && Combatants.isTarget(it) }
-            .filter { owner == null || Combatants.isEnemy(owner, it) }
+            .filter { (owner == null || Combatants.isEnemy(owner, it)) && isHarmed(tnt, it) }
             .minByOrNull { it.location.add(0.0, 1.0, 0.0).distanceSquared(tnt.position) }
         if (catcher != null) {
             tnt.state = State.HELD
@@ -446,16 +454,11 @@ object TntManager : Tickable {
         world.spawnParticle(Particle.EXPLOSION_EMITTER, center, 1)
         playSound(center, org.bukkit.Sound.ENTITY_GENERIC_EXPLODE, 4f, 1f)
 
-        val owner = Bukkit.getEntity(tnt.owner) as? LivingEntity
-        // 持ち主のチームの味方は巻き込まない (持ち主本人は巻き込む)。
-        // 一度も投げていなければ、着火した人のチームの味方も巻き込まない
-        val safeSides = setOfNotNull(owner?.let(Combatants::sideOf), tnt.originSide.takeIf { !tnt.thrown })
+        // 誰が投げたかに関係なく、着火した人の TNT として巻き込む
         val victims = linkedSetOf<LivingEntity>()
-        tnt.holder()?.let { if (Combatants.isTarget(it)) victims += it }
+        tnt.holder()?.let { if (isHarmed(tnt, it)) victims += it }
         for (entity in world.getNearbyEntitiesByType(LivingEntity::class.java, center, KILL_RADIUS + 2.0)) {
-            if (!Combatants.isTarget(entity)) continue
-            if (entity != owner && Combatants.sideOf(entity) in safeSides) continue
-            if (distanceToBody(entity, center) <= KILL_RADIUS) victims += entity
+            if (isHarmed(tnt, entity) && distanceToBody(entity, center) <= KILL_RADIUS) victims += entity
         }
 
         // 着火した人の TNT を時間で復活させる
@@ -469,11 +472,40 @@ object TntManager : Tickable {
                 (other.position.distance(center) <= CHAIN_RADIUS || other.holder in victimIds)
         }
 
+        // 着火した人が倒れたら自爆 (誰のキルにもしない)。着火した人の味方は投げ返した敵のキル、
+        // それ以外 (着火した人の敵) は必ず着火した人のキル
+        val igniter = Bukkit.getEntity(tnt.igniter) as? LivingEntity
+        val thrower = Bukkit.getEntity(tnt.owner) as? LivingEntity
         for (victim in victims) {
-            val key = if (victim == owner) "rushcraft.match.death.tnt-self" else "rushcraft.match.death.tnt"
-            CombatTracker.kill(victim, owner?.takeIf { it != victim }, key)
+            when {
+                victim.uniqueId == tnt.igniter -> CombatTracker.kill(victim, null, "rushcraft.match.death.tnt-self")
+                isIgniterSide(tnt, victim) -> CombatTracker.kill(victim, thrower, "rushcraft.match.death.tnt")
+                else -> CombatTracker.kill(victim, igniter, "rushcraft.match.death.tnt")
+            }
         }
         chained.forEach(::explode)
+    }
+
+    /**
+     * 爆発で倒れる人か。着火した人本人と、着火した人の敵は巻き込む。
+     * 着火した人の味方は、最後に投げたのが着火した人の敵 (投げ返された) のときだけ巻き込む。
+     */
+    private fun isHarmed(tnt: Tnt, entity: LivingEntity): Boolean {
+        if (!Combatants.isTarget(entity)) return false
+        if (entity.uniqueId == tnt.igniter) return true
+        if (!isIgniterSide(tnt, entity)) return true
+        val thrower = Bukkit.getEntity(tnt.owner) as? LivingEntity ?: return false
+        return !isIgniterSide(tnt, thrower)
+    }
+
+    /** 着火した人本人か、その味方か */
+    private fun isIgniterSide(tnt: Tnt, entity: LivingEntity): Boolean {
+        if (entity.uniqueId == tnt.igniter) return true
+        val igniter = Bukkit.getEntity(tnt.igniter) as? LivingEntity
+        if (igniter != null && Combatants.sideOf(igniter) != null) return !Combatants.isEnemy(igniter, entity)
+        // 着火した人が抜けた: 着火したときの陣営で判断する
+        val side = tnt.originSide ?: return false
+        return Combatants.sideOf(entity) == side
     }
 
     private fun distanceToBody(player: LivingEntity, point: Location): Double {

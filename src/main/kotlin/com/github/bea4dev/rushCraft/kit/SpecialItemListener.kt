@@ -20,6 +20,7 @@ import org.bukkit.event.entity.ProjectileHitEvent
 import org.bukkit.event.entity.ProjectileLaunchEvent
 import org.bukkit.event.player.PlayerAnimationEvent
 import org.bukkit.event.player.PlayerAnimationType
+import org.bukkit.event.player.PlayerDropItemEvent
 import org.bukkit.event.player.PlayerInteractEntityEvent
 import org.bukkit.event.player.PlayerInteractEvent
 import org.bukkit.event.player.PlayerItemDamageEvent
@@ -51,7 +52,7 @@ class SpecialItemListener : Listener {
                 event.isCancelled = true
                 if (!Combatants.canUse(player)) return
                 // 投げたら復活するまで使えない
-                player.inventory.setItemInMainHand(null)
+                ItemRecharge.useUp(player, SpecialItem.THROWING_KNIFE)
                 ThrowingKnife.throwKnife(player)
             }
 
@@ -61,9 +62,7 @@ class SpecialItemListener : Listener {
                 val clicked = event.clickedBlock
                 if (event.action != Action.RIGHT_CLICK_BLOCK || clicked == null || !Combatants.canUse(player)) return
                 if (!InstantWall.build(player, clicked.getRelative(event.blockFace))) return
-                val stack = player.inventory.itemInMainHand
-                stack.amount--
-                player.inventory.setItemInMainHand(stack)
+                ItemRecharge.useUp(player, SpecialItem.INSTANT_WALL)
                 ItemRecharge.schedule(player, SpecialItem.INSTANT_WALL, InstantWall.RECHARGE_TICKS)
             }
 
@@ -126,6 +125,20 @@ class SpecialItemListener : Listener {
     // ------------------------------------------------------------------
     // メイス・槍
     // ------------------------------------------------------------------
+
+    /** メイスの叩きつけはダメージを上げる (盾などの処理より先に) */
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    fun onSmash(event: EntityDamageByEntityEvent) {
+        if (MaceManager.isSmash(event)) MaceManager.boostSmash(event)
+    }
+
+    /** メイスの叩きつけが当たったら、周りの敵も巻き込む */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    fun onSmashed(event: EntityDamageByEntityEvent) {
+        if (!MaceManager.isSmash(event)) return
+        val victim = event.entity as? LivingEntity ?: return
+        MaceManager.splashSmash(event.damager as LivingEntity, victim, event.damage)
+    }
 
     /** ダメージを受けたらメイスのチャージを解除する */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -210,6 +223,12 @@ class SpecialItemListener : Listener {
             event.isCancelled = true
             if (Combatants.canUse(attacker)) TntManager.ignite(attacker)
         }
+    }
+
+    /** 補充待ちのアイテムは捨てられない */
+    @EventHandler(ignoreCancelled = true)
+    fun onDropPlaceholder(event: PlayerDropItemEvent) {
+        if (ItemRecharge.isPlaceholder(event.itemDrop.itemStack)) event.isCancelled = true
     }
 
     // ------------------------------------------------------------------
