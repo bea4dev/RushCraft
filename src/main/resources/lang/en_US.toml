@@ -309,6 +309,7 @@ denied = "You can''t swap places with that spot"
 
 [kit.tnt]
 ignited = "Lit! Click to throw"
+ignited-subtitle = "Click to stick it on an enemy!"
 caught = "You''re stuck with the TNT! Click to throw it back!"
 returned = "Your TNT came back! Click to throw"
 

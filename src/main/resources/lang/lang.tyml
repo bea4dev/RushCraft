@@ -308,6 +308,7 @@ kit: {
     },
     tnt: {
         ignited: string,
+        ignited-subtitle: string,
         caught: string,
         returned: string,
     },

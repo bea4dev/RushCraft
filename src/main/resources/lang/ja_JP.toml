@@ -308,6 +308,7 @@ denied = "その場所とは入れ替えられない"
 
 [kit.tnt]
 ignited = "着火！ クリックで投げる"
+ignited-subtitle = "クリックで敵に押し付けろ！"
 caught = "TNT を持たされた！ クリックで投げ返せ！"
 returned = "TNT が戻ってきた！ クリックで投げる"
 

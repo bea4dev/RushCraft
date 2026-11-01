@@ -8,6 +8,7 @@ import com.github.bea4dev.rushCraft.scheduler.Tickable
 import net.kyori.adventure.sound.Sound
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
+import net.kyori.adventure.title.Title
 import org.bukkit.Bukkit
 import org.bukkit.Color
 import org.bukkit.FluidCollisionMode
@@ -20,6 +21,7 @@ import org.bukkit.util.Transformation
 import org.bukkit.util.Vector
 import org.joml.Quaternionf
 import org.joml.Vector3f
+import java.time.Duration
 import java.util.UUID
 import kotlin.random.Random
 
@@ -78,6 +80,9 @@ object TntManager : Tickable {
     /** 表示の大きさ */
     private const val SCALE = 0.45f
 
+    /** 着火したときに出す操作説明のサブタイトルを表示しておく tick 数 */
+    private const val HINT_TICKS = 30
+
     private enum class State { HELD, FLYING, RETURNING, RESTING }
 
     /**
@@ -121,6 +126,9 @@ object TntManager : Tickable {
 
     private val tnts = mutableListOf<Tnt>()
 
+    /** 操作説明のサブタイトルを出した tick (投げたら消す) */
+    private val hints = HashMap<UUID, Int>()
+
     // ------------------------------------------------------------------
     // 操作
     // ------------------------------------------------------------------
@@ -148,6 +156,14 @@ object TntManager : Tickable {
 
         playSound(position, org.bukkit.Sound.ENTITY_TNT_PRIMED, 1f, 1f)
         player.sendActionBar(Component.translatable("rushcraft.kit.tnt.ignited", NamedTextColor.RED))
+        player.showTitle(
+            Title.title(
+                Component.empty(),
+                Component.translatable("rushcraft.kit.tnt.ignited-subtitle", NamedTextColor.RED),
+                Title.Times.times(Duration.ZERO, Duration.ofMillis(HINT_TICKS * 50L), Duration.ofMillis(250)),
+            )
+        )
+        hints[player.uniqueId] = Bukkit.getCurrentTick()
     }
 
     private fun spawnDisplay(position: Location): BlockDisplay {
@@ -185,6 +201,9 @@ object TntManager : Tickable {
         tnt.holder = null
         tnt.velocity = player.eyeLocation.direction.multiply(THROW_SPEED).add(Vector(0.0, THROW_UPWARD, 0.0))
         playSound(tnt.position, org.bukkit.Sound.ENTITY_WITCH_THROW, 1f, 0.8f)
+        // 投げたら操作説明はもう要らない (まだ表示中のときだけ消す)
+        val hinted = hints.remove(player.uniqueId)
+        if (hinted != null && Bukkit.getCurrentTick() - hinted < HINT_TICKS) player.clearTitle()
         return true
     }
 
@@ -488,6 +507,7 @@ object TntManager : Tickable {
      * 持ち主の TNT は戻らないようにする。着火した TNT はリスポーンで新しく配られるので、復活の対象から外す。
      */
     fun onLeave(player: Player) {
+        hints.remove(player.uniqueId)
         for (tnt in tnts) {
             if (tnt.holder == player.uniqueId) drop(tnt)
             if (tnt.owner == player.uniqueId) {
@@ -505,6 +525,7 @@ object TntManager : Tickable {
 
     fun reset() {
         tnts.toList().forEach(::remove)
+        hints.clear()
     }
 
     override fun isAlive(): Boolean = true
