@@ -3,6 +3,7 @@ package com.github.bea4dev.rushCraft.kit
 import com.destroystokyo.paper.event.block.BlockDestroyEvent
 import com.github.bea4dev.rushCraft.RushCraft
 import org.bukkit.Bukkit
+import org.bukkit.entity.LivingEntity
 import org.bukkit.entity.Player
 import org.bukkit.entity.Trident
 import org.bukkit.event.EventHandler
@@ -159,8 +160,9 @@ class SpecialItemListener : Listener {
     fun onSwapperHit(event: ProjectileHitEvent) {
         val trident = event.entity as? Trident ?: return
         if (!Swapper.isSwapper(trident)) return
-        val thrower = trident.shooter as? Player ?: return
-        val target = event.hitEntity as? Player ?: return
+        // チュートリアルではダミーにも当たる
+        val thrower = trident.shooter as? LivingEntity ?: return
+        val target = event.hitEntity as? LivingEntity ?: return
         if (target == thrower) return
         // ダメージを与えてから入れ替える
         Bukkit.getScheduler().runTask(RushCraft.plugin, Runnable { Swapper.swap(thrower, target) })

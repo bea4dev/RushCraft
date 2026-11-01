@@ -111,6 +111,7 @@ object MaceManager : Tickable {
         if (forward.lengthSquared() > 1.0E-4) forward.normalize().multiply(LEAP_FORWARD)
         player.velocity = forward.setY(LEAP_UPWARD)
         leaps[player.uniqueId] = Leap(player.location)
+        KitActionEvent.call(player, KitActionEvent.Action.MACE_LEAP)
         player.world.playSound(
             Sound.sound(org.bukkit.Sound.ENTITY_BREEZE_JUMP, Sound.Source.PLAYER, 1f, 1f),
             player.x, player.y, player.z,

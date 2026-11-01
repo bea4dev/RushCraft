@@ -8,6 +8,7 @@ import net.kyori.adventure.text.format.NamedTextColor
 import org.bukkit.Bukkit
 import org.bukkit.Location
 import org.bukkit.Particle
+import org.bukkit.entity.LivingEntity
 import org.bukkit.entity.Player
 import org.bukkit.entity.Trident
 import org.bukkit.util.Vector
@@ -56,20 +57,23 @@ object Swapper : Tickable {
 
     fun isSwapper(trident: Trident): Boolean = KitManager.specialOf(trident.itemStack) == SpecialItem.SWAPPER
 
-    fun swap(thrower: Player, target: Player) {
+    /** 投げた人・当たった相手はプレイヤーとは限らない (チュートリアルのダミー) */
+    fun swap(thrower: LivingEntity, target: LivingEntity) {
         if (!Combatants.isTarget(thrower) || !Combatants.isTarget(target)) return
         if (thrower.world != target.world || !Combatants.isEnemy(thrower, target)) return
         // スタン中はアーマースタンドに乗っているので動かせない
         if (ShieldManager.isStunned(thrower) || ShieldManager.isStunned(target)) return
 
-        val match = MatchManager.match ?: return
-        val throwerTeam = match.getTeam(thrower) ?: return
-        val targetTeam = match.getTeam(target) ?: return
         val throwerLocation = thrower.location
         val targetLocation = target.location
 
         // スポーン部屋や羊毛部屋に入れてしまわないようにする
-        if (!match.canEnter(throwerTeam, targetLocation) || !match.canEnter(targetTeam, throwerLocation)) {
+        val match = MatchManager.match
+        val throwerTeam = (thrower as? Player)?.let { match?.getTeam(it) }
+        val targetTeam = (target as? Player)?.let { match?.getTeam(it) }
+        if (match != null && throwerTeam != null && targetTeam != null &&
+            (!match.canEnter(throwerTeam, targetLocation) || !match.canEnter(targetTeam, throwerLocation))
+        ) {
             thrower.sendActionBar(Component.translatable("rushcraft.kit.swapper.denied", NamedTextColor.RED))
             return
         }
@@ -89,6 +93,7 @@ object Swapper : Tickable {
         TntManager.onSwap(thrower, target)
         thrower.sendActionBar(Component.translatable("rushcraft.kit.swapper.swapped", NamedTextColor.AQUA))
         target.sendActionBar(Component.translatable("rushcraft.kit.swapper.swapped", NamedTextColor.AQUA))
+        KitActionEvent.call(thrower, KitActionEvent.Action.SWAP, target)
     }
 
     private fun withRotation(position: Location, rotation: Location): Location {

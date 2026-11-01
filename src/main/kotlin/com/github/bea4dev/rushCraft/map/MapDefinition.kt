@@ -66,7 +66,6 @@ class MapDefinition(
     /** 待機中・観戦者のスポーン */
     var spawn: SpawnPoint,
     var time: Long,
-    var lockTime: Boolean,
     val teams: MutableList<TeamDefinition>,
     val kit: KitDefinition,
     val noBuildRegions: MutableList<Region>,
@@ -120,8 +119,8 @@ class MapDefinition(
         writer.value("spawn", spawn.toToml())
 
         writer.table("world")
+        writer.comment("時刻 (試合中は常にこの時刻で止まる)")
         writer.value("time", time)
-        writer.value("lock-time", lockTime)
 
         writer.table("kit")
         writer.comment("革防具をチーム色に染めるか")
@@ -200,7 +199,6 @@ class MapDefinition(
                 maxBuildHeight = result.optInt("max-build-height"),
                 spawn = result.optTable("spawn")?.let(SpawnPoint::parse) ?: SpawnPoint.DEFAULT,
                 time = world?.optLong("time") ?: 6000L,
-                lockTime = world?.bool("lock-time", true) ?: true,
                 teams = teams.toMutableList(),
                 kit = KitDefinition(
                     items = kit?.tables("items")?.map(KitItem::parse)?.toMutableList() ?: mutableListOf(),
@@ -225,7 +223,6 @@ class MapDefinition(
                 maxBuildHeight = null,
                 spawn = SpawnPoint.DEFAULT,
                 time = 6000L,
-                lockTime = true,
                 teams = mutableListOf(
                     TeamDefinition("red", TeamColor.RED, null, 0, mutableListOf()),
                     TeamDefinition("blue", TeamColor.BLUE, null, 0, mutableListOf()),

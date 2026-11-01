@@ -119,7 +119,6 @@ object SetupMenu {
             text("time_limit", tr("info.time-limit"), map.timeLimit.toString(), 8),
             text("max_height", tr("info.max-height"), map.maxBuildHeight?.toString() ?: "", 8),
             text("time", tr("info.time"), map.time.toString(), 8),
-            DialogInput.bool("lock_time", tr("info.lock-time")).initial(map.lockTime).build(),
         )
 
         val save = button(tr("save").color(NamedTextColor.GREEN)) { view, p ->
@@ -141,7 +140,6 @@ object SetupMenu {
             map.timeLimit = timeLimit
             map.maxBuildHeight = maxHeight
             map.time = time
-            map.lockTime = view.getBoolean("lock_time") ?: map.lockTime
             session.world.time = time
             changed(session)
             openMain(p, session)

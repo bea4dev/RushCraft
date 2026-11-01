@@ -9,6 +9,9 @@ import com.github.bea4dev.rushCraft.match.mode.CTWType
 import com.github.bea4dev.rushCraft.menu.KitMenu
 import com.github.bea4dev.rushCraft.setup.SetupManager
 import com.github.bea4dev.rushCraft.setup.SetupMenu
+import com.github.bea4dev.rushCraft.tutorial.Tutorial
+import com.github.bea4dev.rushCraft.tutorial.TutorialManager
+import com.github.bea4dev.rushCraft.tutorial.TutorialMenu
 import io.papermc.paper.command.brigadier.BasicCommand
 import io.papermc.paper.command.brigadier.CommandSourceStack
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents
@@ -25,6 +28,7 @@ object Commands {
             registrar.register("join", "Join a team", JoinCommand)
             registrar.register("spectate", "Spectate the match", listOf("obs"), SpectateCommand)
             registrar.register("kit", "Select your kit", KitCommand)
+            registrar.register("tutorial", "Open the tutorials", listOf("tut"), TutorialCommand)
             registrar.register("rushcraft", "RushCraft admin command", listOf("rc"), AdminCommand)
             registrar.register("rcmap", "RushCraft map setup", SetupCommand)
         }
@@ -76,6 +80,29 @@ object Commands {
             val player = commandSourceStack.player() ?: return
             if (!requireMatch(player)) return
             KitMenu.open(player)
+        }
+    }
+
+    /** /tutorial: 一覧、/tutorial <id>: そのチュートリアルを始める、/tutorial leave: やめる */
+    private object TutorialCommand : BasicCommand {
+        override fun execute(commandSourceStack: CommandSourceStack, args: Array<String>) {
+            val player = commandSourceStack.player() ?: return
+            if (!requireMatch(player)) return
+            val argument = args.firstOrNull()?.lowercase() ?: return TutorialMenu.open(player)
+            if (argument == "leave") {
+                if (!TutorialManager.leave(player)) {
+                    player.sendMessage(Component.translatable("rushcraft.tutorial.not-in-tutorial", NamedTextColor.RED))
+                }
+                return
+            }
+            val tutorial = Tutorial.byId(argument)
+                ?: return player.usage("/tutorial [${Tutorial.entries.joinToString("|") { it.id }}|leave]")
+            TutorialManager.start(player, tutorial)
+        }
+
+        override fun suggest(commandSourceStack: CommandSourceStack, args: Array<String>): Collection<String> {
+            if (args.size > 1) return emptyList()
+            return filter(Tutorial.entries.map { it.id } + "leave", args.firstOrNull() ?: "")
         }
     }
 

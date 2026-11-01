@@ -1,12 +1,13 @@
 package com.github.bea4dev.rushCraft.kit
 
-import com.github.bea4dev.rushCraft.manager.MatchManager
 import com.github.bea4dev.rushCraft.match.TeamColor
 import com.github.bea4dev.rushCraft.scheduler.Tickable
 import net.kyori.adventure.sound.Sound
 import org.bukkit.Bukkit
 import org.bukkit.Material
+import org.bukkit.World
 import org.bukkit.block.Block
+import org.bukkit.entity.LivingEntity
 import org.bukkit.entity.Player
 import org.bukkit.event.block.BlockPlaceEvent
 import org.bukkit.inventory.EquipmentSlot
@@ -20,9 +21,11 @@ import kotlin.math.roundToInt
  *
  * - 2 tick ごとに 1 段ずつ積み上がる
  * - 各列は地形に合わせて 1 ブロックまで上下にずれる
- * - ブロックが置かれる場所にいるプレイヤーは上に吹き飛ばされる
+ * - ブロックが置かれる場所にいるプレイヤー (とチュートリアルのダミー) は上に吹き飛ばされる
  * - 置けるかどうかは通常の設置と同じ判定 (建築禁止エリア・スポーン部屋など)
  * - 使ってから一定時間で復活する
+ *
+ * 作るのはプレイヤーとは限らない (チュートリアルのお手本)。
  */
 object InstantWall : Tickable {
     const val RECHARGE_TICKS = 300
@@ -32,7 +35,7 @@ object InstantWall : Tickable {
     private const val LAYER_INTERVAL = 2
     private const val LAUNCH_VELOCITY = 1.2
 
-    private class Wall(val player: Player, val columns: List<Block>, val material: Material) {
+    private class Wall(val builder: LivingEntity, val columns: List<Block>, val material: Material) {
         var ticks = 0
         var layer = 0
 
@@ -48,8 +51,8 @@ object InstantWall : Tickable {
      * clicked の face 側を中心に壁を作り始める。
      * @return 作り始めたか
      */
-    fun build(player: Player, base: Block): Boolean {
-        val color = MatchManager.match?.getTeam(player)?.color ?: return false
+    fun build(player: LivingEntity, base: Block): Boolean {
+        val color = Combatants.colorOf(player) ?: return false
         val forward = snapDirection(player.location.direction)
         // 向きと直交する方向に並べる
         val side = Vector(-forward.z, 0.0, forward.x)
@@ -60,6 +63,7 @@ object InstantWall : Tickable {
         if (columns.isEmpty()) return false
 
         walls += Wall(player, columns, glassOf(color))
+        KitActionEvent.call(player, KitActionEvent.Action.WALL_BUILT)
         return true
     }
 
@@ -90,7 +94,7 @@ object InstantWall : Tickable {
         for (wall in walls.toList()) {
             if (wall.ticks++ % LAYER_INTERVAL != 0) continue
             placeLayer(wall)
-            if (++wall.layer >= HEIGHT || !MatchManager.isRunning(wall.columns.first().world)) walls -= wall
+            if (++wall.layer >= HEIGHT || !Combatants.isArena(wall.columns.first().location)) walls -= wall
         }
     }
 
@@ -99,11 +103,11 @@ object InstantWall : Tickable {
         for ((index, base) in wall.columns.withIndex()) {
             if (wall.blocked[index]) continue
             val block = base.getRelative(0, wall.layer, 0)
-            if (!isReplaceable(block) || !canPlace(wall.player, block, wall.material)) {
+            if (!isReplaceable(block) || !canPlace(wall.builder, block, wall.material)) {
                 wall.blocked[index] = true
                 continue
             }
-            launchPlayers(block)
+            launchPlayers(wall, block)
             block.setType(wall.material, false)
             placed = true
         }
@@ -113,8 +117,9 @@ object InstantWall : Tickable {
         }
     }
 
-    /** 通常の設置と同じ保護を通す */
-    private fun canPlace(player: Player, block: Block, material: Material): Boolean {
+    /** 通常の設置と同じ保護を通す (お手本のダミーは範囲内ならどこでも置ける) */
+    private fun canPlace(builder: LivingEntity, block: Block, material: Material): Boolean {
+        val player = builder as? Player ?: return builder.isValid && Combatants.isArena(block.location)
         if (!player.isOnline) return false
         val event = BlockPlaceEvent(
             block, block.state, block.getRelative(0, -1, 0), ItemStack(material), player, true, EquipmentSlot.HAND,
@@ -123,13 +128,22 @@ object InstantWall : Tickable {
         return !event.isCancelled && event.canBuild()
     }
 
-    /** ブロックが置かれる場所にいるプレイヤーを上に吹き飛ばす */
-    private fun launchPlayers(block: Block) {
+    /** ブロックが置かれる場所にいるプレイヤー (とダミー) を上に吹き飛ばす */
+    private fun launchPlayers(wall: Wall, block: Block) {
         val box = BoundingBox.of(block)
-        for (player in block.world.getNearbyEntitiesByType(Player::class.java, block.location.add(0.5, 0.5, 0.5), 2.0)) {
-            if (!player.boundingBox.overlaps(box) || player.isDead) continue
-            player.velocity = player.velocity.setY(LAUNCH_VELOCITY)
+        for (entity in block.world.getNearbyEntitiesByType(LivingEntity::class.java, block.location.add(0.5, 0.5, 0.5), 2.0)) {
+            if (!entity.boundingBox.overlaps(box) || entity.isDead) continue
+            if (entity !is Player && !Combatants.isTarget(entity)) continue
+            entity.velocity = entity.velocity.setY(LAUNCH_VELOCITY)
+            if (entity != wall.builder && Combatants.isEnemy(wall.builder, entity)) {
+                KitActionEvent.call(wall.builder, KitActionEvent.Action.WALL_LAUNCH, entity)
+            }
         }
+    }
+
+    /** 範囲内で作っている途中の壁を止める */
+    fun clearArea(world: World, box: BoundingBox) {
+        walls.removeIf { wall -> wall.columns.first().world == world && box.contains(wall.columns.first().location.toVector()) }
     }
 
     fun reset() {

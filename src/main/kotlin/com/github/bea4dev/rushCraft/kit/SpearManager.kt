@@ -7,6 +7,7 @@ import net.kyori.adventure.text.format.NamedTextColor
 import org.bukkit.Bukkit
 import org.bukkit.damage.DamageSource
 import org.bukkit.damage.DamageType
+import org.bukkit.entity.LivingEntity
 import org.bukkit.entity.Player
 import org.bukkit.inventory.meta.Damageable
 import org.bukkit.util.Vector
@@ -51,7 +52,8 @@ object SpearManager : Tickable {
         if (last != null && now - last <= USE_DEBOUNCE_TICKS) return
         lastUse[player.uniqueId] = now
 
-        actives[player.uniqueId] = Active(ACTIVE_TICKS)
+        activate(player)
+        KitActionEvent.call(player, KitActionEvent.Action.SPEAR_LUNGE)
 
         val inventory = player.inventory
         val stack = inventory.itemInMainHand
@@ -76,12 +78,17 @@ object SpearManager : Tickable {
         ItemRecharge.schedule(player, SpecialItem.SPEAR, RECHARGE_TICKS)
     }
 
+    /** 周りの敵にダメージを与え始める (チュートリアルのお手本も使う) */
+    fun activate(user: LivingEntity) {
+        actives[user.uniqueId] = Active(ACTIVE_TICKS)
+    }
+
     override fun tick() {
         val iterator = actives.entries.iterator()
         while (iterator.hasNext()) {
             val (uuid, active) = iterator.next()
-            val player = Bukkit.getPlayer(uuid)
-            if (player == null || !Combatants.canUse(player) || --active.ticks < 0) {
+            val player = Bukkit.getEntity(uuid) as? LivingEntity
+            if (player == null || !Combatants.isTarget(player) || ShieldManager.isStunned(player) || --active.ticks < 0) {
                 iterator.remove()
                 continue
             }
@@ -89,23 +96,24 @@ object SpearManager : Tickable {
         }
     }
 
-    private fun hitAround(player: Player, active: Active) {
+    private fun hitAround(player: LivingEntity, active: Active) {
         val forward = player.location.direction.setY(0)
         if (forward.lengthSquared() > 1.0E-4) forward.normalize().multiply(FORWARD_OFFSET)
         val center = player.location.add(0.0, 1.0, 0.0).add(forward)
 
-        for (target in player.world.getNearbyEntitiesByType(Player::class.java, center, HIT_RADIUS + 1.0)) {
+        for (target in player.world.getNearbyEntitiesByType(LivingEntity::class.java, center, HIT_RADIUS + 1.0)) {
             if (target == player || target.uniqueId in active.hit) continue
             if (!Combatants.isTarget(target) || !Combatants.isEnemy(player, target)) continue
             if (distanceToBody(target, center.toVector()) > HIT_RADIUS) continue
             active.hit += target.uniqueId
             // 近接攻撃として扱う (盾でパリィできる)
-            val source = DamageSource.builder(DamageType.PLAYER_ATTACK).withCausingEntity(player).withDirectEntity(player).build()
+            val type = if (player is Player) DamageType.PLAYER_ATTACK else DamageType.MOB_ATTACK
+            val source = DamageSource.builder(type).withCausingEntity(player).withDirectEntity(player).build()
             target.damage(DAMAGE, source)
         }
     }
 
-    private fun distanceToBody(player: Player, point: Vector): Double {
+    private fun distanceToBody(player: LivingEntity, point: Vector): Double {
         val box = player.boundingBox
         val x = point.x.coerceIn(box.minX, box.maxX)
         val y = point.y.coerceIn(box.minY, box.maxY)

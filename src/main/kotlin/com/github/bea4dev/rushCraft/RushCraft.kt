@@ -19,9 +19,12 @@ import com.github.bea4dev.rushCraft.listener.MatchListener
 import com.github.bea4dev.rushCraft.manager.BUNGEE_CHANNEL
 import com.github.bea4dev.rushCraft.manager.MatchManager
 import com.github.bea4dev.rushCraft.map.MapRegistry
-import com.github.bea4dev.rushCraft.menu.KitMenu
+import com.github.bea4dev.rushCraft.menu.ChestMenu
 import com.github.bea4dev.rushCraft.setup.SetupListener
 import com.github.bea4dev.rushCraft.setup.SetupManager
+import com.github.bea4dev.rushCraft.tutorial.TutorialListener
+import com.github.bea4dev.rushCraft.tutorial.TutorialManager
+import com.github.bea4dev.rushCraft.tutorial.TutorialWorld
 import org.bukkit.Bukkit
 import org.bukkit.plugin.java.JavaPlugin
 
@@ -53,7 +56,8 @@ class RushCraft : JavaPlugin() {
             pluginManager.registerEvents(KitListener(), this)
             pluginManager.registerEvents(SpecialItemListener(), this)
             ShieldManager.schedule()
-            pluginManager.registerEvents(KitMenu, this)
+            pluginManager.registerEvents(ChestMenu, this)
+            pluginManager.registerEvents(TutorialListener(), this)
             ThrowingKnife.schedule()
             TntManager.schedule()
             Swapper.schedule()
@@ -62,12 +66,15 @@ class RushCraft : JavaPlugin() {
             SpearManager.schedule()
             TrapManager.schedule()
             ItemRecharge.schedule()
+            TutorialWorld.load()
+            TutorialManager.schedule()
             MatchManager.start(config, MapRegistry.all())
         }
     }
 
     override fun onDisable() {
         // Plugin shutdown logic
+        TutorialManager.shutdown()
         ShieldManager.reset(restore = true)
         ThrowingKnife.reset()
         TntManager.reset()

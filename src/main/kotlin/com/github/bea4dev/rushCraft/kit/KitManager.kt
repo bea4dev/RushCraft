@@ -26,6 +26,10 @@ object KitManager {
     enum class UiItem(val material: Material, val nameKey: String) {
         TEAM_SELECTOR(Material.COMPASS, "rushcraft.kit.ui.team-selector"),
         KIT_SELECTOR(Material.CHEST, "rushcraft.kit.ui.kit-selector"),
+        TUTORIAL(Material.KNOWLEDGE_BOOK, "rushcraft.kit.ui.tutorial"),
+
+        /** チュートリアル中のメニュー (やり直す・やめる) */
+        LEAVE_TUTORIAL(Material.NETHER_STAR, "rushcraft.kit.ui.tutorial-menu"),
     }
 
     lateinit var config: KitConfig
@@ -116,6 +120,7 @@ object KitManager {
         if (participant) {
             inventory.setItem(1, createUiItem(UiItem.KIT_SELECTOR))
         }
+        inventory.setItem(8, createUiItem(UiItem.TUTORIAL))
     }
 
     // ------------------------------------------------------------------

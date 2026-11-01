@@ -8,7 +8,9 @@ import org.bukkit.FluidCollisionMode
 import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.Particle
+import org.bukkit.entity.HumanEntity
 import org.bukkit.entity.ItemDisplay
+import org.bukkit.entity.LivingEntity
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
 import org.bukkit.util.Transformation
@@ -49,7 +51,10 @@ object ThrowingKnife : Tickable {
 
     private val knives = mutableListOf<Knife>()
 
-    fun throwKnife(player: Player) {
+    /**
+     * 投げる。投げるのはプレイヤーとは限らない (チュートリアルのお手本)。
+     */
+    fun throwKnife(player: LivingEntity) {
         val eye = player.eyeLocation
         val direction = eye.direction
         val start = eye.clone().add(direction.clone().multiply(0.4)).subtract(0.0, 0.2, 0.0)
@@ -64,7 +69,7 @@ object ThrowingKnife : Tickable {
             display.transformation = transformation(0f)
         }
         knives += Knife(player.uniqueId, display, start, direction.multiply(SPEED))
-        ItemRecharge.schedule(player, SpecialItem.THROWING_KNIFE, RECHARGE_TICKS)
+        if (player is Player) ItemRecharge.schedule(player, SpecialItem.THROWING_KNIFE, RECHARGE_TICKS)
 
         player.world.playSound(
             Sound.sound(org.bukkit.Sound.ITEM_TRIDENT_THROW, Sound.Source.PLAYER, 1f, 1.8f),
@@ -96,7 +101,9 @@ object ThrowingKnife : Tickable {
                 if (++knife.stuckTicks >= STUCK_TICKS) remove(knife)
                 continue
             }
-            if (++knife.ticks > MAX_FLIGHT_TICKS || knife.position.y < knife.position.world.minHeight - 16) {
+            if (++knife.ticks > MAX_FLIGHT_TICKS || knife.position.y < knife.position.world.minHeight - 16 ||
+                !Combatants.isArena(knife.position)
+            ) {
                 remove(knife)
                 continue
             }
@@ -107,7 +114,7 @@ object ThrowingKnife : Tickable {
     private fun move(knife: Knife) {
         val world = knife.position.world
         val velocity = knife.velocity
-        val owner = Bukkit.getPlayer(knife.owner)
+        val owner = Bukkit.getEntity(knife.owner) as? LivingEntity
 
         // パリィ中の敵に向かっていれば、矢と同じように弾き返す
         val parrier = ShieldManager.findParrying(knife.position, velocity) {
@@ -121,11 +128,11 @@ object ThrowingKnife : Tickable {
         val hit = world.rayTrace(
             knife.position, velocity, velocity.length(), FluidCollisionMode.NEVER, true, HIT_RADIUS,
         ) { entity ->
-            entity is Player && entity.uniqueId != knife.owner && Combatants.isTarget(entity) &&
+            entity is LivingEntity && entity.uniqueId != knife.owner && Combatants.isTarget(entity) &&
                 (owner == null || Combatants.isEnemy(owner, entity))
         }
 
-        val victim = hit?.hitEntity as? Player
+        val victim = hit?.hitEntity as? LivingEntity
         if (victim != null) {
             hitPlayer(knife, victim, owner, hit.hitPosition)
             return
@@ -153,19 +160,19 @@ object ThrowingKnife : Tickable {
         velocity.y -= GRAVITY
     }
 
-    private fun hitPlayer(knife: Knife, victim: Player, owner: Player?, position: Vector) {
+    private fun hitPlayer(knife: Knife, victim: LivingEntity, owner: LivingEntity?, position: Vector) {
         val world = victim.world
         knife.position = position.toLocation(world)
 
         // パリィ中なら投げた方向へ弾き返す
-        if (ShieldManager.isParrying(victim)) {
+        if (victim is Player && ShieldManager.isParrying(victim)) {
             reflect(knife, victim)
             return
         }
 
         // 盾を正面に構えていれば防がれる
-        if (victim.isBlocking && victim.location.direction.dot(knife.velocity) < 0) {
-            ShieldManager.onBlockedHit(victim)
+        if (victim is HumanEntity && victim.isBlocking && victim.location.direction.dot(knife.velocity) < 0) {
+            if (victim is Player) ShieldManager.onBlockedHit(victim)
             world.playSound(
                 Sound.sound(org.bukkit.Sound.ITEM_SHIELD_BLOCK, Sound.Source.PLAYER, 1f, 1f),
                 victim.x, victim.y, victim.z,

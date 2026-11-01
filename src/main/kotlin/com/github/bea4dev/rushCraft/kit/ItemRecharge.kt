@@ -1,7 +1,7 @@
 package com.github.bea4dev.rushCraft.kit
 
-import com.github.bea4dev.rushCraft.manager.MatchManager
 import com.github.bea4dev.rushCraft.scheduler.Tickable
+import com.github.bea4dev.rushCraft.tutorial.TutorialManager
 import net.kyori.adventure.sound.Sound
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
@@ -12,6 +12,7 @@ import java.util.UUID
 /**
  * 使い切った・壊れた特殊アイテムを時間で復活させる (盾・投げナイフ・TNT)。
  * 死んだ場合はリスポーンで配り直されるので取り消す。
+ * チュートリアル中は何度も試せるよう、すぐに復活させる。
  */
 object ItemRecharge : Tickable {
     private class Pending(val special: SpecialItem, val at: Int)
@@ -21,7 +22,7 @@ object ItemRecharge : Tickable {
     fun schedule(player: Player, special: SpecialItem, ticks: Int) {
         val list = pending.getOrPut(player.uniqueId, ::mutableListOf)
         list.removeIf { it.special == special }
-        list += Pending(special, Bukkit.getCurrentTick() + ticks)
+        list += Pending(special, Bukkit.getCurrentTick() + TutorialManager.rechargeTicks(player, ticks))
     }
 
     override fun tick() {
@@ -49,7 +50,7 @@ object ItemRecharge : Tickable {
         val inventory = player.inventory
         if (inventory.contents.any { KitManager.specialOf(it) == special }) return
         if (special == SpecialItem.TNT && TntManager.isActive(player)) return
-        val color = MatchManager.match?.getTeam(player)?.color ?: return
+        val color = Combatants.colorOf(player) ?: return
         for ((slot, stack) in KitManager.createSpecialItems(special, color)) {
             KitManager.give(player, slot, stack)
         }

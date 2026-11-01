@@ -1,12 +1,14 @@
 package com.github.bea4dev.rushCraft.kit
 
 import com.github.bea4dev.rushCraft.RushCraft
-import com.github.bea4dev.rushCraft.manager.MatchManager
 import com.github.bea4dev.rushCraft.menu.KitMenu
 import com.github.bea4dev.rushCraft.menu.TeamMenu
+import com.github.bea4dev.rushCraft.tutorial.TutorialManager
+import com.github.bea4dev.rushCraft.tutorial.TutorialMenu
 import org.bukkit.Bukkit
 import org.bukkit.damage.DamageType
 import org.bukkit.entity.AbstractArrow
+import org.bukkit.entity.LivingEntity
 import org.bukkit.entity.Player
 import org.bukkit.entity.Projectile
 import org.bukkit.event.EventHandler
@@ -40,6 +42,8 @@ class KitListener : Listener {
         when (type) {
             KitManager.UiItem.TEAM_SELECTOR -> TeamMenu.open(player)
             KitManager.UiItem.KIT_SELECTOR -> KitMenu.open(player)
+            KitManager.UiItem.TUTORIAL -> TutorialMenu.open(player)
+            KitManager.UiItem.LEAVE_TUTORIAL -> TutorialManager.leave(player)
         }
     }
 
@@ -48,6 +52,8 @@ class KitListener : Listener {
     fun onInteract(event: PlayerInteractEvent) {
         if (event.hand != EquipmentSlot.HAND) return
         val type = KitManager.uiItemOf(event.item) ?: return
+        // TNT を持たされている間のクリックは投げる操作 (SpecialItemListener)
+        if (TntManager.isHolding(event.player)) return
         event.isCancelled = true
         open(event.player, type)
     }
@@ -118,16 +124,15 @@ class KitListener : Listener {
         return type == DamageType.MACE_SMASH || type == DamageType.SPEAR
     }
 
+    // 攻撃してくるのはプレイヤーとは限らない (チュートリアルのダミー)
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     fun onMeleeParry(event: EntityDamageByEntityEvent) {
         val victim = event.entity as? Player ?: return
-        val attacker = event.damager as? Player ?: return
+        val attacker = event.damager as? LivingEntity ?: return
         if (!isMelee(event)) return
         if (!ShieldManager.isParrying(victim)) return
-        if (!MatchManager.isRunning(victim.world)) return
         // 味方からの攻撃は対象外
-        val match = MatchManager.match ?: return
-        if (match.getTeam(victim) == match.getTeam(attacker)) return
+        if (!Combatants.isTarget(victim) || !Combatants.isEnemy(victim, attacker)) return
 
         event.isCancelled = true
         ShieldManager.parryMelee(victim, attacker)
@@ -137,9 +142,9 @@ class KitListener : Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     fun onGuardedMelee(event: EntityDamageByEntityEvent) {
         val victim = event.entity as? Player ?: return
-        val attacker = event.damager as? Player ?: return
+        val attacker = event.damager as? LivingEntity ?: return
         if (!isMelee(event)) return
-        if (!MatchManager.isRunning(victim.world) || !Combatants.isEnemy(victim, attacker)) return
+        if (!Combatants.isTarget(victim) || !Combatants.isEnemy(victim, attacker)) return
         ShieldManager.onGuardedMelee(victim, attacker)
     }
 
@@ -148,7 +153,7 @@ class KitListener : Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     fun onBlockedHit(event: EntityDamageByEntityEvent) {
         val victim = event.entity as? Player ?: return
-        if (!MatchManager.isRunning(victim.world)) return
+        if (!Combatants.isTarget(victim)) return
         if (!event.isApplicable(EntityDamageEvent.DamageModifier.BLOCKING)) return
         if (event.getDamage(EntityDamageEvent.DamageModifier.BLOCKING) >= 0.0) return
         ShieldManager.onBlockedHit(victim)
@@ -169,8 +174,8 @@ class KitListener : Listener {
 
     @EventHandler(ignoreCancelled = true)
     fun onDismount(event: EntityDismountEvent) {
-        val player = event.entity as? Player ?: return
-        if (ShieldManager.isStunned(player)) event.isCancelled = true
+        val entity = event.entity as? LivingEntity ?: return
+        if (ShieldManager.isStunned(entity)) event.isCancelled = true
     }
 
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)

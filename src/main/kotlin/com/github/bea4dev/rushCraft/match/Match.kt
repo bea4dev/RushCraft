@@ -4,6 +4,7 @@ import com.github.bea4dev.rushCraft.RushCraft
 import com.github.bea4dev.rushCraft.kit.KitManager
 import com.github.bea4dev.rushCraft.map.MapDefinition
 import com.github.bea4dev.rushCraft.scheduler.Tickable
+import com.github.bea4dev.rushCraft.tutorial.TutorialManager
 import net.kyori.adventure.sound.Sound
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.JoinConfiguration
@@ -128,6 +129,8 @@ class Match<G : MatchGameMode<G>>(val mode: G, val map: MapDefinition, val world
 
         for (player in Bukkit.getOnlinePlayers()) {
             player.sendMessage(message)
+            // チュートリアル中の人の邪魔はしない
+            if (TutorialManager.isInTutorial(player)) continue
             player.showTitle(Title.title(message, Component.empty()))
 
             val team = getTeam(player)

@@ -21,6 +21,7 @@ import com.github.bea4dev.rushCraft.match.MatchTeam
 import com.github.bea4dev.rushCraft.menu.KitMenu
 import com.github.bea4dev.rushCraft.menu.TeamMenu
 import com.github.bea4dev.rushCraft.scheduler.Tickable
+import com.github.bea4dev.rushCraft.tutorial.TutorialManager
 import net.kyori.adventure.sound.Sound
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.event.ClickEvent
@@ -138,10 +139,11 @@ object MatchManager : Tickable {
         bukkit = createBukkitMatchManager(newMatch)
         state = MatchState.Waiting(config.waitingSeconds, -1)
 
-        // 試合ごとに全員がチーム選択画面から参加し直す
+        // 試合ごとに全員がチーム選択画面から参加し直す (チュートリアル中の人はそのまま続ける)
         for (player in Bukkit.getOnlinePlayers()) {
             bukkit?.showTo(player)
             setTeam(player, null)
+            if (TutorialManager.isInTutorial(player)) continue
             prepareLobby(player, teleport = true)
             openTeamMenuLater(player)
         }
@@ -255,9 +257,15 @@ object MatchManager : Tickable {
 
     private fun startMatch(match: Match<*>) {
         state = MatchState.Running
+        // 参加者のチュートリアルは終わらせて試合に入れる
+        for (player in match.getMembers()) {
+            if (TutorialManager.leave(player, restore = false)) {
+                player.sendMessage(Component.translatable("rushcraft.tutorial.match-started", NamedTextColor.YELLOW))
+            }
+        }
         match.start()
         for (player in Bukkit.getOnlinePlayers()) {
-            if (match.getTeam(player) == null) {
+            if (match.getTeam(player) == null && !TutorialManager.isInTutorial(player)) {
                 makeSpectator(player)
             }
         }
@@ -275,6 +283,7 @@ object MatchManager : Tickable {
         ItemRecharge.reset()
         CombatTracker.reset()
         for (player in Bukkit.getOnlinePlayers()) {
+            if (TutorialManager.isInTutorial(player)) continue
             prepareLobby(player, teleport = false)
         }
     }
@@ -350,7 +359,7 @@ object MatchManager : Tickable {
     private fun openTeamMenuLater(player: Player) {
         Bukkit.getScheduler().runTaskLater(RushCraft.plugin, Runnable {
             val state = state
-            if (player.isOnline && match?.getTeam(player) == null &&
+            if (player.isOnline && match?.getTeam(player) == null && !TutorialManager.isInTutorial(player) &&
                 (state is MatchState.Waiting || state is MatchState.Running)
             ) {
                 TeamMenu.open(player)
@@ -410,14 +419,44 @@ object MatchManager : Tickable {
                         .hoverEvent(HoverEvent.showText(Component.translatable("rushcraft.match.spectating-join-hover")))
                         .clickEvent(ClickEvent.runCommand("/join"))
                 )
+                .append(Component.space())
+                .append(
+                    Component.translatable("rushcraft.match.spectating-tutorial", NamedTextColor.AQUA)
+                        .hoverEvent(HoverEvent.showText(Component.translatable("rushcraft.match.spectating-tutorial-hover")))
+                        .clickEvent(ClickEvent.runCommand("/tutorial"))
+                )
         )
     }
 
+    // ------------------------------------------------------------------
+    // チュートリアル
+    // ------------------------------------------------------------------
+
+    /** チュートリアルを受けられるか (試合中の参加者は受けられない) */
+    fun canStartTutorial(player: Player): Boolean {
+        val state = state
+        if (match == null || state is MatchState.Closing) return false
+        return !(state is MatchState.Running && isParticipant(player))
+    }
+
+    /** チュートリアルを終えたプレイヤーを、試合の状態に合わせた場所へ戻す */
+    fun returnFromTutorial(player: Player) {
+        val match = match ?: return
+        bukkit?.showTo(player)
+        val team = match.getTeam(player)
+        when (state) {
+            is MatchState.Running -> if (team != null) match.spawn(player, team) else makeSpectator(player)
+            is MatchState.Closing -> {
+                prepareLobby(player, teleport = true)
+                sendToLobby(player)
+            }
+
+            else -> prepareLobby(player, teleport = true)
+        }
+    }
+
     /**
-     * /join コマンド。teamId が null なら人数の少ないチーム。
-     */
-    /**
-     * 人数の少ないチームに自動で参加する (チームは選べない)。
+     * 人数の少ないチームに自動で参加する (チームは選べない)。チュートリアル中ならやめて参加する。
      */
     fun join(player: Player) {
         val match = match ?: return
@@ -439,12 +478,13 @@ object MatchManager : Tickable {
             return
         }
 
+        val fromTutorial = TutorialManager.leave(player, restore = false)
         setTeam(player, target)
         player.sendMessage(Component.translatable("rushcraft.command.join.joined", NamedTextColor.GREEN, target.displayName()))
         if (state is MatchState.Running) {
             match.spawn(player, target)
         } else {
-            prepareLobby(player, teleport = false)
+            prepareLobby(player, teleport = fromTutorial)
         }
         // 参加したらキット選択画面を出す
         KitMenu.open(player)
@@ -456,12 +496,16 @@ object MatchManager : Tickable {
     fun spectate(player: Player) {
         val match = match ?: return
         if (match.getTeam(player) == null) {
+            // チュートリアル中なら、やめて戻る
+            if (TutorialManager.leave(player)) return
             player.sendMessage(Component.translatable("rushcraft.command.spectate.already", NamedTextColor.RED))
             return
         }
         ShieldManager.release(player)
         setTeam(player, null)
         player.sendMessage(Component.translatable("rushcraft.command.spectate.done", NamedTextColor.GREEN))
+        // チュートリアル中ならそのまま続ける
+        if (TutorialManager.isInTutorial(player)) return
         when (state) {
             is MatchState.Running -> makeSpectator(player)
             is MatchState.Waiting -> prepareLobby(player, teleport = false)

@@ -1,6 +1,7 @@
 package com.github.bea4dev.rushCraft.menu
 
 import com.github.bea4dev.rushCraft.manager.MatchManager
+import com.github.bea4dev.rushCraft.tutorial.TutorialMenu
 import com.github.bea4dev.rushCraft.util.Dialogs
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.JoinConfiguration
@@ -40,6 +41,11 @@ object TeamMenu {
         val buttons = listOfNotNull(
             if (current == null) Dialogs.button(tr("join").color(NamedTextColor.GREEN)) { _, p -> MatchManager.join(p) } else null,
             Dialogs.button(tr("spectate").color(NamedTextColor.GRAY)) { _, p -> MatchManager.spectate(p) },
+            if (MatchManager.canStartTutorial(player)) {
+                Dialogs.button(tr("tutorial").color(NamedTextColor.AQUA), tr("tutorial-tooltip")) { _, p -> TutorialMenu.open(p) }
+            } else {
+                null
+            },
         )
 
         Dialogs.show(player, tr("title"), body, buttons = buttons, exit = Dialogs.closeButton(tr("close")))

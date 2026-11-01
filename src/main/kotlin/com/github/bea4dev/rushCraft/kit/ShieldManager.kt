@@ -1,6 +1,5 @@
 package com.github.bea4dev.rushCraft.kit
 
-import com.github.bea4dev.rushCraft.manager.MatchManager
 import com.github.bea4dev.rushCraft.match.CombatTracker
 import com.github.bea4dev.rushCraft.scheduler.Tickable
 import io.papermc.paper.entity.TeleportFlag
@@ -14,6 +13,7 @@ import org.bukkit.Location
 import org.bukkit.Particle
 import org.bukkit.entity.AbstractArrow
 import org.bukkit.entity.ArmorStand
+import org.bukkit.entity.LivingEntity
 import org.bukkit.entity.Player
 import org.bukkit.entity.Trident
 import org.bukkit.inventory.EquipmentSlot
@@ -37,6 +37,7 @@ import java.util.UUID
  *   - 成功すると盾の耐久が全回復する
  * - スタン中はマーカーのアーマースタンドに座らされてふっとび、アイテムを一時的に没収され攻撃できない。
  *   着地してから 1.5 秒で解除される。
+ *   (チュートリアルのダミーはそのままふっとばし、着地してから 1.5 秒は動かないようにする)
  */
 object ShieldManager : Tickable {
     /** ガードし続けて壊れるまでの tick 数 */
@@ -92,12 +93,13 @@ object ShieldManager : Tickable {
         var lastAttackedAt = 0
     }
 
+    /** contents: 没収したアイテム (プレイヤーのみ) */
     private class Stun(
-        val player: Player,
+        val entity: LivingEntity,
         val seat: ArmorStand,
         var feet: Location,
         var velocity: Vector,
-        val contents: Array<ItemStack?>,
+        val contents: Array<ItemStack?>?,
     ) {
         var ticks = 0
         var landedTicks = -1
@@ -115,7 +117,7 @@ object ShieldManager : Tickable {
         tick++
 
         for (player in Bukkit.getOnlinePlayers()) {
-            if (!MatchManager.isRunning(player.world) || player.isDead) {
+            if (!Combatants.isTarget(player)) {
                 guards.remove(player.uniqueId)
                 continue
             }
@@ -163,7 +165,7 @@ object ShieldManager : Tickable {
      * ガード中に近接攻撃を受けた (KitListener から呼ばれる)。
      * 直後にガードを解除すればパリィになるよう覚えておく。
      */
-    fun onGuardedMelee(victim: Player, attacker: Player) {
+    fun onGuardedMelee(victim: Player, attacker: LivingEntity) {
         if (guardingHand(victim) == null) return
         val guard = guards[victim.uniqueId] ?: return
         guard.lastAttacker = attacker.uniqueId
@@ -172,7 +174,7 @@ object ShieldManager : Tickable {
 
     /** ガード中に受けた近接攻撃の直後にガードを解除したら、その攻撃をパリィしたことにする */
     private fun parryLateMelee(player: Player, guard: Guard) {
-        val attacker = guard.lastAttacker?.let(Bukkit::getPlayer) ?: return
+        val attacker = guard.lastAttacker?.let(Bukkit::getEntity) as? LivingEntity ?: return
         // ガード解除は次の tick の処理で気付くので、その 1 tick 分を足す
         if (Bukkit.getCurrentTick() - guard.lastAttackedAt > PARRY_GRACE_TICKS + 1) return
         if (!Combatants.isTarget(attacker) || attacker.world != player.world) return
@@ -208,6 +210,7 @@ object ShieldManager : Tickable {
         if (guardingHand(player) == null) return
         val guard = guards[player.uniqueId] ?: return
         damageShield(player, guard, BLOCKED_HIT_DAMAGE_RATIO)
+        KitActionEvent.call(player, KitActionEvent.Action.GUARD)
     }
 
     private fun damageShield(player: Player, guard: Guard, amount: Double) {
@@ -267,31 +270,41 @@ object ShieldManager : Tickable {
 
     /**
      * パリィ成功。盾の耐久を全回復する。
+     * @param projectile 飛んできたものを弾き返したか (false なら近接攻撃)
      */
-    fun parried(player: Player) {
+    fun parried(player: Player, projectile: Boolean = true) {
         repair(player)
         guards[player.uniqueId]?.let {
             // 成功したらクールタイムを解除する
             it.parryReadyAt = 0L
         }
-        player.world.playSound(
-            Sound.sound(org.bukkit.Sound.BLOCK_ANVIL_LAND, Sound.Source.PLAYER, 0.8f, 1.8f),
-            player.x, player.y, player.z,
-        )
-        player.world.spawnParticle(Particle.CRIT, player.location.add(0.0, 1.0, 0.0), 20, 0.4, 0.4, 0.4, 0.3)
-        // 盾の前で光らせる
-        val front = player.eyeLocation.add(player.location.direction.multiply(0.8)).subtract(0.0, 0.3, 0.0)
-        player.world.spawnParticle(Particle.FLASH, front, 1, 0.0, 0.0, 0.0, 0.0, Color.WHITE)
+        playParryEffects(player)
         player.sendActionBar(Component.translatable("rushcraft.kit.shield.parry", NamedTextColor.GOLD))
+        val action = if (projectile) KitActionEvent.Action.PARRY_PROJECTILE else KitActionEvent.Action.PARRY_MELEE
+        KitActionEvent.call(player, action)
+    }
+
+    /** パリィ成功の音と光 (チュートリアルのお手本でも使う) */
+    fun playParryEffects(entity: LivingEntity) {
+        entity.world.playSound(
+            Sound.sound(org.bukkit.Sound.BLOCK_ANVIL_LAND, Sound.Source.PLAYER, 0.8f, 1.8f),
+            entity.x, entity.y, entity.z,
+        )
+        entity.world.spawnParticle(Particle.CRIT, entity.location.add(0.0, 1.0, 0.0), 20, 0.4, 0.4, 0.4, 0.3)
+        // 盾の前で光らせる
+        val front = entity.eyeLocation.add(entity.location.direction.multiply(0.8)).subtract(0.0, 0.3, 0.0)
+        entity.world.spawnParticle(Particle.FLASH, front, 1, 0.0, 0.0, 0.0, 0.0, Color.WHITE)
     }
 
     /**
      * 近接攻撃をパリィした。攻撃は無効化し、相手をふっとばしてスタンさせる。
      */
-    fun parryMelee(victim: Player, attacker: Player) {
-        parried(victim)
-        // ふっとばして奈落に落とした場合もキルになるようにする
-        CombatTracker.record(attacker, victim)
+    fun parryMelee(victim: Player, attacker: LivingEntity) {
+        parried(victim, projectile = false)
+        if (attacker is Player) {
+            // ふっとばして奈落に落とした場合もキルになるようにする
+            CombatTracker.record(attacker, victim)
+        }
         stun(attacker, victim.location)
     }
 
@@ -333,26 +346,34 @@ object ShieldManager : Tickable {
     // スタン
     // ------------------------------------------------------------------
 
-    fun isStunned(player: Player): Boolean = player.uniqueId in stuns
+    fun isStunned(entity: LivingEntity): Boolean = entity.uniqueId in stuns
 
-    /**
-     * from の位置から遠ざかる方向にふっとばしてスタンさせる。
-     */
-    fun stun(target: Player, from: Location) {
-        if (isStunned(target) || target.isDead) return
-
+    /** from の位置から遠ざかる方向へのふっとびの初速 */
+    private fun knockback(target: LivingEntity, from: Location): Vector {
         val direction = target.location.toVector().subtract(from.toVector()).setY(0)
         if (direction.lengthSquared() < 1.0E-4) {
             direction.copy(from.direction.setY(0))
         }
-        val velocity = direction.normalize().multiply(KNOCKBACK_HORIZONTAL).setY(KNOCKBACK_VERTICAL)
+        return direction.normalize().multiply(KNOCKBACK_HORIZONTAL).setY(KNOCKBACK_VERTICAL)
+    }
 
-        // アイテムを一時的に没収する
-        val inventory = target.inventory
-        val contents = inventory.contents.map { it?.clone() }.toTypedArray()
-        target.setItemOnCursor(null)
-        target.closeInventory()
-        inventory.clear()
+    /**
+     * from の位置から遠ざかる方向にふっとばしてスタンさせる。
+     * 見えない台に座らせてふっとばす (プレイヤー以外のチュートリアルのダミーも同じ)。
+     */
+    fun stun(target: LivingEntity, from: Location) {
+        if (isStunned(target) || target.isDead) return
+        val velocity = knockback(target, from)
+
+        // プレイヤーはアイテムを一時的に没収する
+        val contents = (target as? Player)?.let { player ->
+            val inventory = player.inventory
+            val contents = inventory.contents.map { it?.clone() }.toTypedArray()
+            player.setItemOnCursor(null)
+            player.closeInventory()
+            inventory.clear()
+            contents
+        }
 
         val feet = target.location
         val seat = target.world.spawn(feet.clone().add(0.0, SEAT_OFFSET, 0.0), ArmorStand::class.java) { stand ->
@@ -371,14 +392,16 @@ object ShieldManager : Tickable {
             Sound.sound(org.bukkit.Sound.ENTITY_PLAYER_ATTACK_KNOCKBACK, Sound.Source.PLAYER, 1f, 0.8f),
             target.x, target.y, target.z,
         )
-        target.sendActionBar(Component.translatable("rushcraft.kit.shield.stunned", NamedTextColor.RED))
+        if (target is Player) {
+            target.sendActionBar(Component.translatable("rushcraft.kit.shield.stunned", NamedTextColor.RED))
+        }
     }
 
     private fun tickStuns() {
         for (stun in stuns.values.toList()) {
-            val player = stun.player
-            if (!player.isOnline || player.isDead || !stun.seat.isValid || !MatchManager.isRunning(player.world)) {
-                endStun(stun, restore = player.isOnline && !player.isDead)
+            val entity = stun.entity
+            if (!entity.isValid || entity.isDead || !stun.seat.isValid || !Combatants.isTarget(entity)) {
+                endStun(stun, restore = entity.isValid && !entity.isDead)
                 continue
             }
 
@@ -388,12 +411,12 @@ object ShieldManager : Tickable {
                 if (stun.landedTicks >= LANDED_STUN_TICKS) endStun(stun, restore = true)
                 continue
             }
-            if (stun.ticks >= MAX_STUN_TICKS || stun.feet.y < player.world.minHeight - 16) {
+            if (stun.ticks >= MAX_STUN_TICKS || stun.feet.y < entity.world.minHeight - 16) {
                 endStun(stun, restore = true)
                 continue
             }
             move(stun)
-            player.world.spawnParticle(Particle.CRIT, player.location.add(0.0, 1.0, 0.0), 2, 0.2, 0.2, 0.2, 0.0)
+            entity.world.spawnParticle(Particle.CRIT, entity.location.add(0.0, 1.0, 0.0), 2, 0.2, 0.2, 0.2, 0.0)
         }
     }
 
@@ -443,8 +466,8 @@ object ShieldManager : Tickable {
             }
         }
 
-        next.yaw = stun.player.location.yaw
-        next.pitch = stun.player.location.pitch
+        next.yaw = stun.entity.location.yaw
+        next.pitch = stun.entity.location.pitch
         stun.feet = next
         stun.seat.teleport(next.clone().add(0.0, SEAT_OFFSET, 0.0), TeleportFlag.EntityState.RETAIN_PASSENGERS)
 
@@ -454,13 +477,13 @@ object ShieldManager : Tickable {
     }
 
     private fun endStun(stun: Stun, restore: Boolean) {
-        stuns.remove(stun.player.uniqueId)
-        val player = stun.player
+        stuns.remove(stun.entity.uniqueId)
+        val entity = stun.entity
         stun.seat.eject()
         stun.seat.remove()
         if (restore) {
-            player.inventory.contents = stun.contents
-            player.teleport(stun.feet.clone().add(0.0, 0.1, 0.0))
+            if (entity is Player && stun.contents != null) entity.inventory.contents = stun.contents
+            entity.teleport(stun.feet.clone().add(0.0, 0.1, 0.0))
         }
     }
 
@@ -470,7 +493,7 @@ object ShieldManager : Tickable {
     fun takeStunnedItems(player: Player): List<ItemStack> {
         val stun = stuns[player.uniqueId] ?: return emptyList()
         endStun(stun, restore = false)
-        return stun.contents.filterNotNull().filter { !it.isEmpty }
+        return stun.contents.orEmpty().filterNotNull().filter { !it.isEmpty }
     }
 
     /** スタンを解除してアイテムを返す (ログアウト時など) */

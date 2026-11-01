@@ -89,8 +89,11 @@ object MapWorlds {
             ?: throw IllegalStateException("Failed to load world: $name")
     }
 
+    /**
+     * 試合用のルール。時間と天候は常に固定する (時間はマップの設定、天候はワールドに保存されている状態のまま)。
+     */
     fun applyMatchRules(world: World, map: MapDefinition) {
-        world.setGameRule(GameRules.ADVANCE_TIME, !map.lockTime)
+        world.setGameRule(GameRules.ADVANCE_TIME, false)
         world.setGameRule(GameRules.ADVANCE_WEATHER, false)
         world.setGameRule(GameRules.SPAWN_MOBS, false)
         world.setGameRule(GameRules.SPAWN_PHANTOMS, false)
@@ -101,11 +104,10 @@ object MapWorlds {
         world.setGameRule(GameRules.KEEP_INVENTORY, false)
         world.difficulty = Difficulty.NORMAL
         world.time = map.time
-        world.setStorm(false)
-        world.isThundering = false
         world.isAutoSave = false
     }
 
+    /** 編集用のルール。時間と天候は止める (編集中に /weather などで変えた状態がそのまま保存される) */
     fun applyEditRules(world: World) {
         world.setGameRule(GameRules.ADVANCE_TIME, false)
         world.setGameRule(GameRules.ADVANCE_WEATHER, false)
@@ -114,8 +116,6 @@ object MapWorlds {
         world.setGameRule(GameRules.SPAWN_PATROLS, false)
         world.setGameRule(GameRules.SPAWN_WANDERING_TRADERS, false)
         world.setGameRule(GameRules.SHOW_ADVANCEMENT_MESSAGES, false)
-        world.setStorm(false)
-        world.isThundering = false
     }
 
     /**
