@@ -280,6 +280,8 @@ kit: {
         spear-description: string,
         trap: string,
         trap-description: string,
+        invisible_spy: string,
+        invisible_spy-description: string,
     },
     ui: {
         team-selector: string,
@@ -332,6 +334,15 @@ kit: {
     },
     spear: {
         broken: string,
+    },
+    invisible_spy: {
+        gauge: string,
+        revealed: string,
+        revealed-subtitle: string,
+        waiting: string,
+        spotted: string,
+        expired: string,
+        armor-returned: string,
     },
 },
 tutorial: {
@@ -401,6 +412,8 @@ tutorial: {
         tnt: string,
         tnt-self: string,
         trap: string,
+        spotted: string,
+        seen: string,
     },
     dummy: {
         enemy: string,
@@ -494,6 +507,7 @@ tutorial: {
         mace: string,
         spear: string,
         trap: string,
+        invisible_spy: string,
     },
     swapper: {
         subtitle: string,
@@ -547,5 +561,22 @@ tutorial: {
         practice1-hint: string,
         practice2: string,
         practice2-hint: string,
+    },
+    spy: {
+        subtitle: string,
+        intro1: string,
+        intro2: string,
+        intro3: string,
+        demo: string,
+        demo-sneak-label: string,
+        demo2: string,
+        demo-revealed-label: string,
+        practice1: string,
+        practice1-hint: string,
+        line-label: string,
+        goal-label: string,
+        practice2: string,
+        practice2-hint: string,
+        finish: string,
     },
 }

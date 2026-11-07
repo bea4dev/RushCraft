@@ -2,6 +2,7 @@ package com.github.bea4dev.rushCraft.kit
 
 import com.destroystokyo.paper.event.block.BlockDestroyEvent
 import com.github.bea4dev.rushCraft.RushCraft
+import com.github.bea4dev.rushCraft.tutorial.TutorialManager
 import org.bukkit.Bukkit
 import org.bukkit.entity.LivingEntity
 import org.bukkit.entity.Player
@@ -24,12 +25,13 @@ import org.bukkit.event.player.PlayerDropItemEvent
 import org.bukkit.event.player.PlayerInteractEntityEvent
 import org.bukkit.event.player.PlayerInteractEvent
 import org.bukkit.event.player.PlayerItemDamageEvent
+import org.bukkit.event.player.PlayerJoinEvent
 import org.bukkit.event.player.PlayerPickupArrowEvent
 import org.bukkit.event.player.PlayerQuitEvent
 import org.bukkit.inventory.EquipmentSlot
 
 /**
- * スワッパー・投げナイフ・TNT の操作。
+ * スワッパー・投げナイフ・TNT・透明スパイなどの操作。
  */
 class SpecialItemListener : Listener {
     // 空中への右クリックは最初からキャンセル扱いで届くので、キャンセル済みでも受け取る
@@ -73,8 +75,26 @@ class SpecialItemListener : Listener {
                 TntManager.ignite(player)
             }
 
+            SpecialItem.INVISIBLE_SPY -> {
+                // 左右どちらのクリックでも透明になる
+                event.isCancelled = true
+                useSpy(player)
+            }
+
             else -> {}
         }
+    }
+
+    /** 透明になり、透明が解けて復活するまで補充待ちのアイテムを持たせる */
+    private fun useSpy(player: Player) {
+        if (!Combatants.canUse(player) || !InvisibleSpy.cloak(player)) return
+        ItemRecharge.useUp(player, SpecialItem.INVISIBLE_SPY)
+        // 復活の時間は透明が解けてから数え始めるので、ここでは見込みの時間を出しておく
+        ItemRecharge.showCooldown(
+            player,
+            SpecialItem.INVISIBLE_SPY,
+            InvisibleSpy.INVISIBLE_TICKS + TutorialManager.rechargeTicks(player, InvisibleSpy.RECHARGE_TICKS),
+        )
     }
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
@@ -225,6 +245,15 @@ class SpecialItemListener : Listener {
         }
     }
 
+    /** 透明スパイのアイテムで殴ったときも、攻撃せずに透明になる */
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    fun onAttackWithSpy(event: EntityDamageByEntityEvent) {
+        val attacker = event.damager as? Player ?: return
+        if (KitManager.specialOf(attacker.inventory.itemInMainHand) != SpecialItem.INVISIBLE_SPY) return
+        event.isCancelled = true
+        useSpy(attacker)
+    }
+
     /** 補充待ちのアイテムは捨てられない */
     @EventHandler(ignoreCancelled = true)
     fun onDropPlaceholder(event: PlayerDropItemEvent) {
@@ -241,8 +270,15 @@ class SpecialItemListener : Listener {
         Swapper.removeThrown(event.player)
         MaceManager.clear(event.player)
         SpearManager.clear(event.player)
+        InvisibleSpy.clear(event.player)
         // リスポーンで配り直される
         ItemRecharge.clear(event.player)
+    }
+
+    /** 透明スパイの装備を隠すために、送信パケットを書き換えられるようにしておく */
+    @EventHandler
+    fun onJoin(event: PlayerJoinEvent) {
+        EquipmentHider.inject(event.player)
     }
 
     @EventHandler
@@ -251,6 +287,7 @@ class SpecialItemListener : Listener {
         Swapper.removeThrown(event.player)
         MaceManager.clear(event.player)
         SpearManager.clear(event.player)
+        InvisibleSpy.clear(event.player)
         ItemRecharge.clear(event.player)
     }
 }

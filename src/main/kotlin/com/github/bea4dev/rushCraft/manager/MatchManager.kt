@@ -6,6 +6,7 @@ import com.github.bea4dev.rushCraft.config.PluginConfig
 import com.github.bea4dev.rushCraft.config.RestartMethod
 import com.github.bea4dev.rushCraft.kit.KitManager
 import com.github.bea4dev.rushCraft.kit.InstantWall
+import com.github.bea4dev.rushCraft.kit.InvisibleSpy
 import com.github.bea4dev.rushCraft.kit.ItemRecharge
 import com.github.bea4dev.rushCraft.kit.MaceManager
 import com.github.bea4dev.rushCraft.kit.SpearManager
@@ -284,6 +285,7 @@ object MatchManager : Tickable {
         MaceManager.reset()
         SpearManager.reset()
         TrapManager.reset()
+        InvisibleSpy.reset()
         ItemRecharge.reset()
         CombatTracker.reset()
         for (player in Bukkit.getOnlinePlayers()) {

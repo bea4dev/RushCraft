@@ -45,6 +45,12 @@ class KitActionEvent(val actor: LivingEntity, val action: Action, val target: Li
 
         /** トラップを置いた */
         TRAP_PLACED,
+
+        /** 透明スパイで透明になった */
+        SPY_CLOAK,
+
+        /** 透明スパイが敵に見つかった (target は見つけた敵) */
+        SPY_REVEALED,
     }
 
     override fun getHandlers(): HandlerList = HANDLERS

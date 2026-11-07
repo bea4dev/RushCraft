@@ -5,7 +5,9 @@ import com.github.bea4dev.rushCraft.config.PluginConfig
 import com.github.bea4dev.rushCraft.i18n.Translations
 import com.github.bea4dev.rushCraft.kit.KitListener
 import com.github.bea4dev.rushCraft.kit.KitManager
+import com.github.bea4dev.rushCraft.kit.EquipmentHider
 import com.github.bea4dev.rushCraft.kit.InstantWall
+import com.github.bea4dev.rushCraft.kit.InvisibleSpy
 import com.github.bea4dev.rushCraft.kit.ItemRecharge
 import com.github.bea4dev.rushCraft.kit.MaceManager
 import com.github.bea4dev.rushCraft.kit.SpearManager
@@ -66,7 +68,10 @@ class RushCraft : JavaPlugin() {
             MaceManager.schedule()
             SpearManager.schedule()
             TrapManager.schedule()
+            InvisibleSpy.schedule()
             ItemRecharge.schedule()
+            // 再読み込みされたときのために、既にいるプレイヤーにも
+            Bukkit.getOnlinePlayers().forEach(EquipmentHider::inject)
             TutorialWorld.load()
             TutorialManager.schedule()
             MatchManager.start(config, MapRegistry.all())
@@ -83,6 +88,7 @@ class RushCraft : JavaPlugin() {
         MaceManager.reset()
         SpearManager.reset()
         TrapManager.reset()
+        InvisibleSpy.reset()
         Translations.unregister()
     }
 }

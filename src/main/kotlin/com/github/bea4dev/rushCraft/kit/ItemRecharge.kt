@@ -39,6 +39,14 @@ object ItemRecharge : Tickable {
     }
 
     /**
+     * 復活の予定を入れる前に、補充待ちのアイテムにクールダウンの表示だけを出す
+     * (透明スパイのように、効果が終わってから復活の時間を数え始めるもの)。
+     */
+    fun showCooldown(player: Player, special: SpecialItem, ticks: Int) {
+        player.setCooldown(cooldownGroup(special), ticks)
+    }
+
+    /**
      * 手に持っている特殊アイテムを 1 つ使った。無くなったら、復活するまで補充待ちのアイテムを置いておく。
      */
     fun useUp(player: Player, special: SpecialItem) {

@@ -46,7 +46,10 @@ enum class SpecialItem(val id: String, val icon: Material) {
     SPEAR("spear", Material.IRON_SPEAR),
 
     /** 敵が踏むと爆発する感圧板 (見た目はマップごとに変えられる) */
-    TRAP("trap", Material.STONE_PRESSURE_PLATE);
+    TRAP("trap", Material.STONE_PRESSURE_PLATE),
+
+    /** クリックで 10 秒間透明になる (防具は外れる)。敵が近づくとバレる */
+    INVISIBLE_SPY("invisible_spy", Material.AMETHYST_SHARD);
 
     val nameKey: String
         get() = "rushcraft.kit.special.$id"
@@ -119,6 +122,8 @@ enum class SpecialItem(val id: String, val icon: Material) {
                 val plate = MatchManager.match?.map?.kit?.trapPlateMaterial() ?: Material.STONE_PRESSURE_PLATE
                 listOf(8 to named(ItemStack(plate, TrapManager.MAX_TRAPS)))
             }
+
+            INVISIBLE_SPY -> listOf(3 to named(ItemStack(Material.AMETHYST_SHARD)))
         }.onEach { (_, stack) -> KitManager.markSpecial(stack, this) }
     }
 

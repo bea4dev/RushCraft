@@ -99,6 +99,8 @@ class KitListener : Listener {
     fun onDeathStunned(event: PlayerDeathEvent) {
         // スタン中に没収していたアイテムもドロップの対象にする
         event.drops += ShieldManager.takeStunnedItems(event.player)
+        // 透明スパイで外していた防具も
+        event.drops += InvisibleSpy.takeArmor(event.player)
     }
 
     @EventHandler

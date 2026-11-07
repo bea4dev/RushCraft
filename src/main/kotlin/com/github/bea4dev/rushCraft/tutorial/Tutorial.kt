@@ -7,6 +7,7 @@ import com.github.bea4dev.rushCraft.tutorial.content.KnifeTutorial
 import com.github.bea4dev.rushCraft.tutorial.content.MaceTutorial
 import com.github.bea4dev.rushCraft.tutorial.content.ShieldTutorial
 import com.github.bea4dev.rushCraft.tutorial.content.SpearTutorial
+import com.github.bea4dev.rushCraft.tutorial.content.SpyTutorial
 import com.github.bea4dev.rushCraft.tutorial.content.SwapperTutorial
 import com.github.bea4dev.rushCraft.tutorial.content.SwordTutorial
 import com.github.bea4dev.rushCraft.tutorial.content.TntTutorial
@@ -33,7 +34,8 @@ enum class Tutorial(val id: String, val special: SpecialItem?, private val facto
     INSTANT_WALL("instant_wall", SpecialItem.INSTANT_WALL, ::WallTutorial),
     MACE("mace", SpecialItem.MACE, ::MaceTutorial),
     SPEAR("spear", SpecialItem.SPEAR, ::SpearTutorial),
-    TRAP("trap", SpecialItem.TRAP, ::TrapTutorial);
+    TRAP("trap", SpecialItem.TRAP, ::TrapTutorial),
+    INVISIBLE_SPY("invisible_spy", SpecialItem.INVISIBLE_SPY, ::SpyTutorial);
 
     val icon: Material
         get() = special?.icon ?: Material.PINK_WOOL

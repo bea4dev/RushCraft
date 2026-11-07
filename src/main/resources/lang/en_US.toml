@@ -281,6 +281,8 @@ spear = "Spear"
 spear-description = "An iron spear with Lunge II. Attacking lunges you forward, and for 0.8 seconds afterwards enemies around you are hit too. Breaks after 3 uses and comes back after 20 seconds"
 trap = "Trap"
 trap-description = "A pressure plate that explodes when an enemy steps on it, taking down enemies within 2.5 blocks. Nothing happens when you or your teammates step on it. You get 5 per spawn and can have up to 5 placed; placing a 6th sets off your oldest one. A broken trap drops nothing"
+invisible_spy = "Invisible Spy"
+invisible_spy-description = "Click (left or right) to turn invisible for 10 seconds. While invisible your armor comes off, and enemies can''t see the items in your hands either. If an enemy gets within 3 blocks you are spotted, your invisibility ends and your armor stays off for 5 seconds (it comes back right away if the time just runs out). Comes back 20 seconds after the invisibility ends"
 
 [kit.ui]
 team-selector = "Join the Match"
@@ -334,6 +336,15 @@ interrupted = "Your charge was interrupted"
 [kit.spear]
 broken = "Your spear broke! (back in {0} seconds)"
 
+[kit.invisible_spy]
+gauge = "Invisible"
+revealed = "Spotted! Your armor comes back in {0} seconds"
+revealed-subtitle = "You''ve been spotted!"
+waiting = "Armor back in {0} s"
+spotted = "You spotted an invisible spy!"
+expired = "Your invisibility wore off"
+armor-returned = "Your armor is back"
+
 [tutorial]
 prefix = "[Tutorial]"
 unavailable = "Tutorials are not available right now"
@@ -357,6 +368,8 @@ knife = "The knife hit you... Time your release"
 tnt = "Caught in the TNT blast... Try again"
 tnt-self = "Your own TNT blew up... Throw it before it explodes"
 trap = "You stepped on a trap..."
+spotted = "A guard spotted you... Stay more than 3 blocks away"
+seen = "You were seen before turning invisible... Turn invisible before the line"
 
 [tutorial.complete]
 title = "Cleared!"
@@ -378,6 +391,7 @@ instant_wall = "Practice raising walls to block arrows and launch enemies"
 mace = "Practice charging a big leap and smashing down from above"
 spear = "Practice lunging to hit enemies from a distance"
 trap = "Using traps placed on the enemy''s path"
+invisible_spy = "Turn invisible and slip past enemies. Get too close and you are spotted"
 
 [tutorial.menu]
 title = "Tutorials"
@@ -548,3 +562,20 @@ practice1 = "Set traps on the enemy''s path"
 practice1-hint = "Place a plate on the floor where the enemy walks. It blends into the map, so it''s hard to notice"
 practice2 = "Step on your own trap"
 practice2-hint = "It won''t explode for you or your teammates. Go ahead and step on it"
+
+[tutorial.spy]
+subtitle = "Unseen is unbeatable"
+intro1 = "Click (left or right) with the Invisible Spy to turn invisible for 10 seconds. Your armor comes off, and enemies can''t see the items in your hands either"
+intro2 = "If an enemy gets within 3 blocks you are spotted and become visible. Your armor then stays off for 5 seconds (if the time just runs out, it comes back right away)"
+intro3 = "In a match it comes back 20 seconds after the invisibility ends (here it comes back right away)"
+demo = "Demo: slip past a guard while invisible"
+demo-sneak-label = "More than 3 blocks away, you stay hidden"
+demo2 = "Get too close and you are spotted"
+demo-revealed-label = "Spotted!"
+practice1 = "Turn invisible and reach the gold blocks without being spotted"
+practice1-hint = "Past the white line is the guards'' area. Turn invisible before the line. Coming within 3 blocks of a guard gives you away"
+line-label = "Guards'' area"
+goal-label = "Goal"
+practice2 = "Sneak up on the guard while invisible and defeat it"
+practice2-hint = "Getting close reveals you, and you fight without armor. Once spotted, attack all at once"
+finish = "When spotted you fight without armor. Watch where enemies are and pick your moment to close in"

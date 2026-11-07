@@ -1,6 +1,7 @@
 package com.github.bea4dev.rushCraft.tutorial
 
 import com.github.bea4dev.rushCraft.kit.InstantWall
+import com.github.bea4dev.rushCraft.kit.InvisibleSpy
 import com.github.bea4dev.rushCraft.kit.ItemRecharge
 import com.github.bea4dev.rushCraft.kit.KitActionEvent
 import com.github.bea4dev.rushCraft.kit.KitManager
@@ -124,6 +125,7 @@ class TutorialSession(val player: Player, val tutorial: Tutorial) {
         Swapper.removeThrown(player)
         MaceManager.clear(player)
         SpearManager.clear(player)
+        InvisibleSpy.clear(player)
         ItemRecharge.clear(player)
         if (player.isOnline) {
             player.inventory.clear()
@@ -160,6 +162,7 @@ class TutorialSession(val player: Player, val tutorial: Tutorial) {
     private fun cleanupStep() {
         dummies.forEach { dummy ->
             TntManager.onLeave(dummy.entity)
+            InvisibleSpy.clear(dummy.entity)
             TutorialManager.unregister(dummy.entity)
             dummy.remove()
         }
@@ -171,6 +174,8 @@ class TutorialSession(val player: Player, val tutorial: Tutorial) {
         tickers.clear()
         TntManager.clearArea(arena.world, arena.bounds)
         InstantWall.clearArea(arena.world, arena.bounds)
+        // 段階が変わったら透明をやめる (防具は次の段階で配り直す)
+        InvisibleSpy.clear(player)
         guide = null
     }
 
@@ -277,6 +282,7 @@ class TutorialSession(val player: Player, val tutorial: Tutorial) {
         TntManager.onLeave(player)
         MaceManager.clear(player)
         SpearManager.clear(player)
+        InvisibleSpy.clear(player)
         player.health = player.getAttribute(Attribute.MAX_HEALTH)?.value ?: 20.0
         player.fireTicks = 0
         player.fallDistance = 0f
